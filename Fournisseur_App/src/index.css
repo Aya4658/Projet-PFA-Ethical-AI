@@ -1,0 +1,16 @@
+html, body, #root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--cream);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button {
+  font: inherit;
+}
