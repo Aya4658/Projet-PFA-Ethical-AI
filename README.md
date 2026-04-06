@@ -103,3 +103,17 @@
 ### **🌐 Producteurs**
 - P3 : En tant que producteur, je veux recevoir des rappels progressifs avant expiration d’une certification.  
 - P3 : En tant que producteur, je veux voir les heures où mes produits sont le plus consultés.  
+
+
+
+
+## Admin fournisseur ( producteurs ) : 
+- En tant qu’administrateur fournisseurs, je veux gérer les comptes des producteurs.
+- En tant qu’administrateur fournisseurs, je veux valider les comptes producteurs.
+- En tant qu’administrateur fournisseurs, je veux vérifier les certifications uploadées.
+- En tant qu’administrateur fournisseurs, je veux repérer les erreurs dans les données (comme des problèmes de traçabilité ou de certifications).
+## Admin client : 
+- En tant qu’administrateur consommateurs, je veux gérer les comptes des consommateurs.
+- En tant qu’administrateur consommateurs, je veux modérer les avis et signalements.
+- En tant qu’administrateur consommateurs, je veux suivre les signalements en attente.
+- En tant qu’administrateur consommateurs, je veux voir l’historique des activités d’un utilisateur.
