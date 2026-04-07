@@ -17,10 +17,16 @@
 - P0 : En tant que producteur, je veux enregistrer chaque étape de production sur la blockchain.  
 - P0 : En tant que producteur, je veux uploader mes certifications officielles.  
 
-### **🛡️ Administrateurs**
-- P0 : En tant qu’administrateur, je veux gérer les comptes des consommateurs et producteurs.  
-- P0 : En tant qu’administrateur, je veux valider les comptes producteurs.  
-- P0 : En tant qu’administrateur, je veux vérifier les certifications uploadées.  
+### **🛡️ Administrateurs Fournisseur**
+- P0 : En tant qu’admin fournisseur, je veux gérer les comptes fournisseurs afin de contrôler les accès au système.
+
+- P0 : En tant qu’admin fournisseur, je veux valider les produits avant leur publication afin d’assurer leur conformité.
+
+ - P0 : En tant qu’admin fournisseur, je veux valider les certifications afin de garantir leur authenticité.
+ ### **🛡️ Administrateurs Client**  
+  - P0 : En tant qu’admin user, je veux gérer les comptes utilisateurs afin de maintenir un environnement sécurisé.
+
+ - P0 : En tant qu’admin user, je veux traiter les signalements de produits afin de corriger les problèmes signalés.
 
 ### **⚙️ Techniques**
 - P0 : En tant que système, je dois enregistrer les données de traçabilité sur la blockchain.  
@@ -51,9 +57,12 @@
 - P1 : En tant que producteur, je veux consulter les avis laissés par les consommateurs.  
 - P1 : En tant que producteur, je veux analyser les tendances de consultation.  
 
-### **🛡️ Administrateurs**
-- P1 : En tant qu’administrateur, je veux modérer les avis et signalements.  
-- P1 : En tant qu’administrateur, je veux suivre les signalements en attente.  
+### **🛡️ Administrateurs Fournisseur**
+- P1 : En tant qu’admin fournisseur, je veux vérifier la cohérence des données blockchain afin d’assurer la fiabilité des informations.
+
+ ### **🛡️ Administrateurs Client**  
+ - P1 : En tant qu’admin user, je veux modérer les avis afin d’éviter les contenus inappropriés.
+
 
 ### **⚙️ Techniques**
 - P1 : En tant que système, je dois analyser les préférences utilisateurs pour proposer des recommandations.  
@@ -79,9 +88,9 @@
 - P2 : En tant que producteur, je veux voir les produits les plus populaires.  
 - P2 : En tant que producteur, je veux gérer les membres de mon équipe.  
 
-### **🛡️ Administrateurs**
-- P2 : En tant qu’administrateur, je veux voir l’historique des activités d’un utilisateur.  
-- P2 : En tant qu’administrateur, je veux détecter les anomalies dans les données.  
+ ### **🛡️ Administrateurs Client**  
+- P2 : En tant qu’admin user, je veux consulter les statistiques globales afin d’analyser l’utilisation de la plateforme. 
+
 
 ### **⚙️ Techniques**
 - P2 : En tant que système, je dois mémoriser les recherches fréquentes.  
@@ -117,3 +126,14 @@
 - En tant qu’administrateur consommateurs, je veux modérer les avis et signalements.
 - En tant qu’administrateur consommateurs, je veux suivre les signalements en attente.
 - En tant qu’administrateur consommateurs, je veux voir l’historique des activités d’un utilisateur.
+
+## Admin fournisseur : 
+👉 En tant qu’admin fournisseur, je veux gérer les comptes fournisseurs afin de contrôler les accès au système.
+👉 En tant qu’admin fournisseur, je veux valider les produits avant leur publication afin d’assurer leur conformité.
+👉 En tant qu’admin fournisseur, je veux valider les certifications afin de garantir leur authenticité.
+👉 En tant qu’admin fournisseur, je veux vérifier la cohérence des données blockchain afin d’assurer la fiabilité des informations.
+## Admin client :
+👉 En tant qu’admin user, je veux gérer les comptes utilisateurs afin de maintenir un environnement sécurisé.
+👉 En tant qu’admin user, je veux modérer les avis afin d’éviter les contenus inappropriés.
+👉 En tant qu’admin user, je veux traiter les signalements de produits afin de corriger les problèmes signalés.
+👉 En tant qu’admin user, je veux consulter les statistiques globales afin d’analyser l’utilisation de la plateforme.
