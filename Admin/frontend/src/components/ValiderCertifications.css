@@ -1,1 +1,5 @@
 .vc-page { display: flex; flex-direction: column; }
+.vc-col-cert { flex: 2; }
+.vc-cell-bold { font-weight: 600; }
+.vc-expired-date { color: #dc2626; font-weight: 600; }
+.vc-empty { padding: 20px; text-align: center; color: #9ca3af; font-size: 13px; }

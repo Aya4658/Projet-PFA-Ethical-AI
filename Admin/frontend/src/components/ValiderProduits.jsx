@@ -1,123 +1,197 @@
 import { useState } from "react";
 import "./ValiderProduits.css";
 
-const INIT_DATA = [
-  { id: 1, nom: "Tisane Sauvage Aurès",  fournisseur: "Herboristerie",      categorie: "Santé",       statut: "Attente"  },
-  { id: 2, nom: "Écharpe Laine Berbère", fournisseur: "Artisanes Ghardaïa", categorie: "Textile",     statut: "En revue" },
-  { id: 3, nom: "Savon Argan Naturel",   fournisseur: "Coop. Tafraout",     categorie: "Cosmétiques", statut: "Attente"  },
+const INITIAL_DATA = [
+  { produit: "Tisane Sauvage Aurès",  fournisseur: "Herboristerie",      categorie: "Santé",       statut: "Attente"  },
+  { produit: "Écharpe Laine Berbère", fournisseur: "Artisanes Ghardaïa", categorie: "Textile",     statut: "En revue" },
+  { produit: "Savon Argan Naturel",   fournisseur: "Coop. Tafraout",     categorie: "Cosmétiques", statut: "Attente"  },
 ];
 
-function badgeClass(statut) {
-  if (statut === "Attente")  return "badge badge-warn";
-  if (statut === "En revue") return "badge badge-info";
-  if (statut === "Publié")   return "badge badge-ok";
-  return "badge badge-err";
+const BADGE_TYPE = { Attente: "warn", "En revue": "info", Validé: "ok", Refusé: "err" };
+
+function Badge({ type, children }) {
+  return <span className={`badge badge--${type}`}>{children}</span>;
 }
 
-export default function ValiderProduits({ toast }) {
-  const [data, setData]         = useState(INIT_DATA);
-  const [sel, setSel]           = useState(null);
-  const [commentaire, setComm]  = useState("");
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm]         = useState({ nom: "", fournisseur: "", categorie: "Santé" });
+function Toast({ toast }) {
+  if (!toast) return null;
+  return <div className="toast" style={{ background: toast.color }}>{toast.msg}</div>;
+}
 
-  const valider = () => {
-    if (!sel) return;
-    setData(d => d.filter(p => p.id !== sel.id));
-    setSel(null); setComm("");
-    toast("Produit validé et publié !");
+export default function ValiderProduits() {
+  const [data, setData]         = useState(INITIAL_DATA);
+  const [selected, setSelected] = useState(null);
+  const [comment, setComment]   = useState("");
+  const [checks, setChecks]     = useState([true, true, false]);
+  const [toast, setToast]       = useState(null);
+
+  const showToast = (msg, color) => {
+    setToast({ msg, color });
+    setTimeout(() => setToast(null), 2500);
   };
 
-  const refuser = () => {
-    if (!sel) return;
-    setData(d => d.filter(p => p.id !== sel.id));
-    setSel(null); setComm("");
-    toast("Produit refusé.");
+  const doApprove = (ri) => {
+    const p = data[ri].produit;
+    setData((prev) => prev.map((r, i) => (i === ri ? { ...r, statut: "Validé" } : r)));
+    showToast(`✔ "${p}" validé et publié`, "#16a34a");
+    setSelected(null);
   };
 
-  const supprimer = (id) => {
-    setData(d => d.filter(p => p.id !== id));
-    if (sel?.id === id) setSel(null);
-    toast("Produit supprimé.");
+  const doReject = (ri) => {
+    const p = data[ri].produit;
+    setData((prev) => prev.filter((_, i) => i !== ri));
+    showToast(`✖ "${p}" refusé`, "#dc2626");
+    setSelected(null);
   };
 
-  const ajouter = () => {
-    if (!form.nom.trim()) return;
-    setData(d => [...d, { id: Date.now(), nom: form.nom, fournisseur: form.fournisseur || "—", categorie: form.categorie, statut: "Attente" }]);
-    setForm({ nom: "", fournisseur: "", categorie: "Santé" });
-    setShowModal(false);
-    toast("Produit ajouté !");
+  const doAskCorrection = (ri) => {
+    const p = data[ri].produit;
+    setData((prev) => prev.map((r, i) => (i === ri ? { ...r, statut: "En revue" } : r)));
+    showToast(`📝 Correction demandée pour "${p}"`, "#a16207");
+    setSelected(null);
   };
+
+  const toggleCheck = (i) =>
+    setChecks((prev) => prev.map((v, idx) => (idx === i ? !v : v)));
+
+  const selectedItem = selected !== null ? data[selected] : null;
 
   return (
     <div className="vp-page">
-      {showModal && (
-        <div className="modal-overlay">
-          <div className="modal-box">
-            <div className="modal-header">
-              <span className="modal-title">Ajouter un produit</span>
-              <button className="modal-close" onClick={() => setShowModal(false)}>✕</button>
-            </div>
-            <div className="modal-form">
-              <input className="input" placeholder="Nom du produit *" value={form.nom} onChange={e => setForm({ ...form, nom: e.target.value })} />
-              <input className="input" placeholder="Fournisseur" value={form.fournisseur} onChange={e => setForm({ ...form, fournisseur: e.target.value })} />
-              <select className="select" value={form.categorie} onChange={e => setForm({ ...form, categorie: e.target.value })}>
-                <option>Santé</option><option>Textile</option>
-                <option>Cosmétiques</option><option>Alimentation</option><option>Artisanat</option>
-              </select>
-              <div className="action-row" style={{ marginTop: 8 }}>
-                <button className="btn btn-success" style={{ flex: 1 }} onClick={ajouter}>Ajouter</button>
-                <button className="btn btn-default" style={{ flex: 1 }} onClick={() => setShowModal(false)}>Annuler</button>
+      <Toast toast={toast} />
+
+      {/* ── Table card ── */}
+      <div className="card">
+        <div className="card-title">
+          <span className="card-title-bar" />
+          Produits en attente de validation
+        </div>
+
+        <div className="table-wrapper">
+          <div className="table-header">
+            <div className="table-hcell vp-col-produit">Produit</div>
+            <div className="table-hcell">Fournisseur</div>
+            <div className="table-hcell">Catégorie</div>
+            <div className="table-hcell">Statut</div>
+            <div className="table-hcell table-hcell--actions">Actions</div>
+          </div>
+
+          {data.length === 0 && (
+            <div className="vp-empty">Aucun produit en attente ✅</div>
+          )}
+
+          {data.map((r, ri) => (
+            <div
+              key={ri}
+              className={`table-row ${selected === ri ? "table-row--selected" : ""}`}
+              onClick={() => setSelected(ri)}
+            >
+              <div className="table-cell vp-col-produit vp-cell-bold">{r.produit}</div>
+              <div className="table-cell">{r.fournisseur}</div>
+              <div className="table-cell">{r.categorie}</div>
+              <div className="table-cell">
+                <Badge type={BADGE_TYPE[r.statut] || "info"}>{r.statut}</Badge>
+              </div>
+              <div className="table-cell table-cell--actions">
+                <button className="btn btn--primary btn--small" onClick={(e) => { e.stopPropagation(); doApprove(ri); }}>✔ Valider</button>
+                <button className="btn btn--danger btn--small"  onClick={(e) => { e.stopPropagation(); doReject(ri); }}>✖ Refuser</button>
               </div>
             </div>
-          </div>
+          ))}
         </div>
-      )}
 
-      <div className="row-end">
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ Ajouter produit</button>
+        <div className="info-bar mt-8">{data.length} produit(s) en attente</div>
       </div>
 
-      <div className="groupbox">
-        <span className="groupbox-title">Produits en attente de validation</span>
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr><th>Produit</th><th>Fournisseur</th><th>Catégorie</th><th>Statut</th><th></th></tr>
-            </thead>
-            <tbody>
-              {data.length === 0 && <tr><td colSpan={5} className="table-empty">Aucun produit en attente</td></tr>}
-              {data.map(p => (
-                <tr key={p.id} className={sel?.id === p.id ? "selected" : ""} onClick={() => setSel(p)}>
-                  <td style={{ fontWeight: sel?.id === p.id ? 700 : 400, color: sel?.id === p.id ? "#4ade80" : "#fff" }}>{p.nom}</td>
-                  <td>{p.fournisseur}</td>
-                  <td>{p.categorie}</td>
-                  <td><span className={badgeClass(p.statut)}>{p.statut}</span></td>
-                  <td><span className="td-del" onClick={e => { e.stopPropagation(); supprimer(p.id); }}>✕</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* ── Decision card ── */}
+      <div className="card">
+        <div className="card-title">
+          <span className="card-title-bar" />
+          Décision de validation
+          {selectedItem && (
+            <span className="vp-selected-label">— {selectedItem.produit}</span>
+          )}
         </div>
-      </div>
 
-      {sel && (
-        <div className="groupbox">
-          <span className="groupbox-title">Décision — {sel.nom}</span>
-          <textarea
-            className="textarea"
-            rows={3}
-            placeholder="Commentaire (optionnel)…"
-            value={commentaire}
-            onChange={e => setComm(e.target.value)}
-          />
-          <div className="action-row">
-            <button className="btn btn-success" onClick={valider}>✓ Valider & Publier</button>
-            <button className="btn btn-danger"  onClick={refuser}>✕ Refuser</button>
-            <button className="btn btn-default" onClick={() => setSel(null)}>Annuler</button>
-          </div>
-        </div>
-      )}
+        {!selectedItem && (
+          <p className="vp-hint">👆 Cliquez sur un produit pour sélectionner</p>
+        )}
+
+        {selectedItem && (
+          <>
+            {/* Info row */}
+            <div className="vp-info-row">
+              <div className="vp-info-item">
+                <span className="vp-info-lbl">Produit</span>
+                <span className="vp-info-val">{selectedItem.produit}</span>
+              </div>
+              <div className="vp-info-item">
+                <span className="vp-info-lbl">Fournisseur</span>
+                <span className="vp-info-val">{selectedItem.fournisseur}</span>
+              </div>
+              <div className="vp-info-item">
+                <span className="vp-info-lbl">Catégorie</span>
+                <span className="vp-info-val">{selectedItem.categorie}</span>
+              </div>
+              <div className="vp-info-item">
+                <span className="vp-info-lbl">Statut actuel</span>
+                <Badge type={BADGE_TYPE[selectedItem.statut] || "info"}>{selectedItem.statut}</Badge>
+              </div>
+            </div>
+
+            {/* Checklist */}
+            <div className="vp-checks">
+              {["Informations correctes", "Labels vérifiés", "Blockchain enregistrée"].map(
+                (item, i) => (
+                  <label key={i} className="check-row">
+                    <input
+                      type="checkbox"
+                      checked={checks[i]}
+                      onChange={() => toggleCheck(i)}
+                      style={{ accentColor: "#16a34a" }}
+                    />
+                    {item}
+                  </label>
+                )
+              )}
+            </div>
+
+            {/* Comment */}
+            <div className="field-row">
+              <label className="field-label">Commentaire / motif de refus</label>
+              <textarea
+                className="form-textarea"
+                rows={3}
+                placeholder="Justification (optionnelle)..."
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+              />
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex-gap">
+              <button
+                className="btn btn--primary"
+                onClick={() => doApprove(data.indexOf(selectedItem))}
+              >
+                ✔ Valider
+              </button>
+              <button
+                className="btn btn--danger"
+                onClick={() => doReject(data.indexOf(selectedItem))}
+              >
+                ✖ Refuser
+              </button>
+              <button
+                className="btn"
+                onClick={() => doAskCorrection(data.indexOf(selectedItem))}
+              >
+                📝 Demander correction
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
