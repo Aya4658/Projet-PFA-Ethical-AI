@@ -1,18 +1,1 @@
-.fournisseurs {
-  padding: 20px;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th, td {
-  border: 1px solid #ddd;
-  padding: 8px;
-}
-
-th {
-  background-color: #14532d;
-  color: white;
-}
+.gf-page { display: flex; flex-direction: column; gap: 0; }
