@@ -1,115 +1,115 @@
 import { useState } from "react";
 import "./App.css";
+import Home from "./components/Home/Home";
+import GererFournisseurs from "./components/GererFournisseurs/GererFournisseurs";
+import ValiderProduits from "./components/ValiderProduits/ValiderProduits";
+import ValiderCertifications from "./components/ValiderCertifications/ValiderCertifications";
 
-import HomePage from "./components/HomePage";
-import GererFournisseurs from "./components/GererFournisseurs";
-import ValiderProduits from "./components/ValiderProduits";
-import ValiderCertifications from "./components/ValiderCertifications";
+import GererUsers from "./components/GererUsers/GererUsers";
+import ModererAvis from "./components/ModererAvis/ModererAvis";
+import TraiterSignalements from "./components/TraiterSignalements/TraiterSignalements";
+import Statistiques from "./components/Statistiques/Statistiques";
 
-
-// ─── Sidebar config ───────────────────────────────────────────────────────────
-const SIDEBAR_SECTIONS = [
-  {
-    id: "fournisseur",
-    tasks: [
-      { id: "home",                       label: "🏠 Accueil"                   },
-      { id: "gerer-comptes-fournisseurs", label: "Gérer comptes fournisseurs"   },
-      { id: "valider-produits",           label: "Valider produits"             },
-      { id: "valider-certifications",     label: "Valider certifications"       },
-      { id: "verifier-blockchain",        label: "Vérifier Blockchain"          },
-    ],
-  },
-  {
-    id: "user",
-    tasks: [
-      { id: "gerer-comptes-users",   label: "Gérer comptes utilisateurs" },
-      { id: "moderer-avis",          label: "Modérer avis"               },
-      { id: "traiter-signalements",  label: "Traiter signalements"       },
-      { id: "statistiques-globales", label: "Statistiques globales"      },
-    ],
-  },
+const NAV_ITEMS = [
+  { id: "home",                   icon: "🏠", label: "Tableau de bord" },
+  null,
+  { id: "gerer-fournisseurs",     icon: "👥", label: "Gérer comptes fournisseurs" },
+  { id: "valider-produits",       icon: "✅", label: "Valider produits" },
+  { id: "valider-certifications", icon: "🏅", label: "Valider certifications" },
+  { id: "gerer-litiges",          icon: "⚖️", label: "Gérer litiges" },
+  null,
+  { id: "gerer-users",            icon: "🧑‍💼", label: "Gérer comptes utilisateurs" },
+  { id: "moderer-avis",           icon: "💬", label: "Modérer avis" },
+  { id: "traiter-signalements",   icon: "🚨", label: "Traiter signalements" },
+  { id: "statistiques",           icon: "📊", label: "Statistiques globales" },
 ];
 
-// ─── Page map ─────────────────────────────────────────────────────────────────
-const PAGES = {
-  "home":                       <HomePage />,
-  "gerer-comptes-fournisseurs": <GererFournisseurs />,
-  "valider-produits":           <ValiderProduits />,
-  "valider-certifications":     <ValiderCertifications />,
-  "verifier-blockchain":        <VerifierBlockchain />,
-  "gerer-comptes-users":        <GererUsers />,
-  "moderer-avis":               <ModererAvis />,
-  "traiter-signalements":       <TraiterSignalements />,
-  "statistiques-globales":      <StatistiquesGlobales />,
-};
+function Toast({ msg }) {
+  if (!msg) return null;
+  return <div className="toast">✓ {msg}</div>;
+}
 
 export default function App() {
-  const [activeTask, setActiveTask] = useState("home");
+  const [activePage, setActivePage] = useState("home");
+  const [toastMsg, setToastMsg]     = useState("");
 
-  const activeLabel =
-    SIDEBAR_SECTIONS.flatMap((s) => s.tasks).find((t) => t.id === activeTask)
-      ?.label || "";
+  const toast = (msg) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(""), 2600);
+  };
+
+  const renderPage = () => {
+    switch (activePage) {
+      case "home":                   return <Home setPage={setActivePage} />;
+      case "gerer-fournisseurs":     return <GererFournisseurs toast={toast} />;
+      case "valider-produits":       return <ValiderProduits toast={toast} />;
+      case "valider-certifications": return <ValiderCertifications toast={toast} />;
+      case "gerer-litiges":          return <GererLitiges toast={toast} />;
+      case "gerer-users":            return <GererUsers toast={toast} />;
+      case "moderer-avis":           return <ModererAvis toast={toast} />;
+      case "traiter-signalements":   return <TraiterSignalements toast={toast} />;
+      case "statistiques":           return <Statistiques />;
+      default:                       return <Home setPage={setActivePage} />;
+    }
+  };
+
+  const currentItem = NAV_ITEMS.filter(Boolean).find(i => i.id === activePage);
 
   return (
-    <div className="app-wrapper">
-      {/* ══ SIDEBAR ══ */}
-      <aside className="sidebar">
-        {/* Title */}
-        <div className="sidebar-header">
-          <div className="sidebar-title">ADMIN</div>
-          <div className="sidebar-subtitle">EthiTrace · Tableau de bord</div>
+    <div className="app-layout">
+      {/* TOP BAR */}
+      <header className="topbar">
+        <div className="topbar-left">
+          <span className="topbar-dot" />
+          <span className="topbar-sub">Admin</span>
         </div>
-
-        {/* Navigation */}
-        <nav className="sidebar-nav">
-          {SIDEBAR_SECTIONS.map((section, si) => (
-            <div key={section.id}>
-              {si > 0 && <div className="sidebar-divider" />}
-              {section.tasks.map((task) => {
-                const isActive = activeTask === task.id;
-                return (
-                  <button
-                    key={task.id}
-                    className={`sidebar-btn ${isActive ? "sidebar-btn--active" : ""}`}
-                    onClick={() => setActiveTask(task.id)}
-                  >
-                    {task.label}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-        </nav>
-
-        {/* Footer */}
-        <div className="sidebar-footer">
-          <div className="sidebar-avatar">👤</div>
-          <div>
-            <div className="sidebar-user">Super Admin</div>
-            <div className="sidebar-email">admin@ethitrace.dz</div>
+        <div className="topbar-right">
+          <span className="topbar-date">18 Avr 2026</span>
+          <div className="topbar-user">
+            <div className="topbar-avatar">A</div>
+            <span>Super Admin</span>
           </div>
         </div>
-      </aside>
+      </header>
 
-      {/* ══ MAIN ══ */}
-      <main className="main-content">
-        {/* Header */}
-        <header className="main-header">
-          <div>
-            <div className="main-title">{activeLabel}</div>
-            <div className="main-date">
-              {new Date().toLocaleDateString("fr-DZ", { dateStyle: "long" })}
+      <div className="app-body">
+        {/* SIDEBAR */}
+        <aside className="sidebar">
+          <nav className="sidebar-nav">
+            {NAV_ITEMS.map((item, idx) => {
+              if (!item) return <div key={idx} className="sidebar-divider" />;
+              const isActive = activePage === item.id;
+              return (
+                <button
+                  key={item.id}
+                  className={`sidebar-item ${isActive ? "active" : ""}`}
+                  onClick={() => setActivePage(item.id)}
+                >
+                  <span className="sidebar-icon">{item.icon}</span>
+                  <span className="sidebar-label">{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+          <div className="sidebar-footer">EthiTrace v2.1.0 · 2026</div>
+        </aside>
+
+        {/* MAIN CONTENT */}
+        <main className="main-content">
+          {activePage !== "home" && (
+            <div className="page-header">
+              <div className="page-header-bar">
+                <div className="page-header-accent" />
+                <h1 className="page-title">{currentItem?.label}</h1>
+              </div>
+              <div className="page-header-line" />
             </div>
-          </div>
-          <div className="status-indicator">
-            <span className="status-dot" />
-            <span className="status-text">Système opérationnel</span>
-          </div>
-        </header>
+          )}
+          <div className="page-body">{renderPage()}</div>
+        </main>
+      </div>
 
-        {/* Page panel */}
-        <div className="main-panel">{PAGES[activeTask]}</div>
-      </main>
+      <Toast msg={toastMsg} />
     </div>
   );
 }
