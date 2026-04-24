@@ -44,12 +44,6 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
     ),
   ];
 
-  String _getColorCode(double score) {
-    if (score >= 75) return 'green';
-    if (score >= 50) return 'orange';
-    return 'red';
-  }
-
   Color _getScoreColor(double score) {
     if (score >= 75) return AppColor.success;
     if (score >= 50) return AppColor.warning;
