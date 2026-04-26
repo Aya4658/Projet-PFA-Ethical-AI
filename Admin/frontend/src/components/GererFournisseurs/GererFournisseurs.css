@@ -1,1 +1,12 @@
-.gf-page { display: flex; flex-direction: column; gap: 0; }
+/* GererFournisseurs — styles spécifiques au composant */
+/* Les styles globaux sont dans App.css */
+
+/* Highlight ligne suspendue */
+.data-table tr td:has(.badge-err) {
+  opacity: 0.85;
+}
+
+/* Animation douce à la sélection */
+.data-table tr.selected td {
+  transition: background 0.15s;
+}

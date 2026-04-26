@@ -1,83 +1,98 @@
 import { useState } from "react";
+import { Badge, useCRUD, EditModal, ConfirmDialog } from "../shared.jsx";
 import "./ModererAvis.css";
 
-const INIT_DATA = [
-  { id: 1, user: "Leila M.", texte: "Produit non conforme à la description…", note: "2 ★", produit: "Câble HDMI",   statut: "Attente" },
-  { id: 2, user: "Karim B.", texte: "Arnaque totale ! Ne commandez pas…",     note: "1 ★", produit: "Supplément X", statut: "Signalé" },
-  { id: 3, user: "Amira S.", texte: "Livraison rapide, produit de qualité !",  note: "5 ★", produit: "Miel BIO",     statut: "Attente" },
+const FIELDS = [
+  { key: "utilisateur", label: "Utilisateur" },
+  { key: "produit",     label: "Produit" },
+  { key: "note",        label: "Note", type: "select", options: ["1★", "2★", "3★", "4★", "5★"] },
+  { key: "statut",      label: "Statut", type: "select", options: ["Attente", "Signalé", "Actif"] },
+  { key: "avis",        label: "Contenu de l'avis", type: "textarea", full: true },
 ];
 
-function badgeClass(statut) {
-  if (statut === "Publié")  return "badge badge-ok";
-  if (statut === "Attente") return "badge badge-warn";
-  if (statut === "Signalé") return "badge badge-err";
-  return "badge badge-info";
-}
+export default function ModererAvis({ data, setData, showToast }) {
+  const [filtreStatut, setFiltreStatut] = useState("Tous");
+  const crud = useCRUD(data, setData, showToast, a => a.utilisateur);
 
-export default function ModererAvis({ toast }) {
-  const [data, setData] = useState(INIT_DATA);
-  const [sel, setSel]   = useState(null);
-
-  const publier = () => {
-    if (!sel) return;
-    setData(d => d.map(a => a.id === sel.id ? { ...a, statut: "Publié" } : a));
-    setSel(s => ({ ...s, statut: "Publié" }));
-    toast("Avis publié !");
-  };
-
-  const supprimer = (id) => {
-    setData(d => d.filter(a => a.id !== id));
-    if (sel?.id === id) setSel(null);
-    toast("Avis supprimé.");
-  };
+  const filtered = data.filter(a => filtreStatut === "Tous" || a.statut === filtreStatut);
 
   return (
-    <div className="ma-page">
-      <div className="stat-grid-3">
-        <div className="stat-box"><div className="stat-value" style={{ color: "#f87171" }}>{data.filter(a => a.statut === "Attente").length}</div><div className="stat-label">À modérer</div></div>
-        <div className="stat-box"><div className="stat-value" style={{ color: "#4ade80" }}>{data.filter(a => a.statut === "Publié").length}</div><div className="stat-label">Publiés</div></div>
-        <div className="stat-box"><div className="stat-value" style={{ color: "#fbbf24" }}>{data.filter(a => a.statut === "Signalé").length}</div><div className="stat-label">Signalés</div></div>
-      </div>
+    <>
+      <div className="panel">
+        <div className="panel-header">
+          <span>💬 Modérer avis</span>
+          <div className="ph-btns">
+            <div className="ph-btn">_</div><div className="ph-btn">□</div><div className="ph-btn">✕</div>
+          </div>
+        </div>
+        <div className="panel-body">
 
-      <div className="groupbox">
-        <span className="groupbox-title">Avis en attente</span>
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr><th>Utilisateur</th><th>Texte</th><th>Note</th><th>Produit</th><th>Statut</th><th></th></tr>
-            </thead>
-            <tbody>
-              {data.length === 0 && <tr><td colSpan={6} className="table-empty">Aucun avis</td></tr>}
-              {data.map(a => (
-                <tr key={a.id} className={sel?.id === a.id ? "selected" : ""} onClick={() => setSel(a)}>
-                  <td style={{ fontWeight: sel?.id === a.id ? 700 : 400, color: sel?.id === a.id ? "#4ade80" : "#fff" }}>{a.user}</td>
-                  <td className="td-texte">{a.texte}</td>
-                  <td>{a.note}</td>
-                  <td>{a.produit}</td>
-                  <td><span className={badgeClass(a.statut)}>{a.statut}</span></td>
-                  <td><span className="td-del" onClick={e => { e.stopPropagation(); supprimer(a.id); }}>✕</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="groupbox">
+            <span className="groupbox-legend">Filtres avis</span>
+            <div className="form-row" style={{ marginTop: 8 }}>
+              <span className="form-label">Statut :</span>
+              <select className="form-select" value={filtreStatut} onChange={e => setFiltreStatut(e.target.value)}>
+                <option>Tous</option><option>Attente</option><option>Signalé</option><option>Actif</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="groupbox">
+            <span className="groupbox-legend">Avis</span>
+            <div className="stat-grid" style={{ marginTop: 8 }}>
+              <div className="stat-box"><div className="stat-num orange">{data.filter(a => a.statut === "Attente").length}</div><div className="stat-lbl">À modérer</div></div>
+              <div className="stat-box"><div className="stat-num">{data.filter(a => a.statut === "Actif").length}</div><div className="stat-lbl">Publiés</div></div>
+              <div className="stat-box"><div className="stat-num red">{data.filter(a => a.statut === "Signalé").length}</div><div className="stat-lbl">Signalés</div></div>
+            </div>
+
+            {filtered.length === 0 ? (
+              <div className="empty-state"><div className="empty-state-icon">💬</div>Aucun avis</div>
+            ) : (
+              <table className="data-table">
+                <thead><tr><th>Utilisateur</th><th>Avis</th><th>Note</th><th>Produit</th><th>Statut</th></tr></thead>
+                <tbody>
+                  {filtered.map(a => (
+                    <tr key={a.id} className={crud.selected === a.id ? "selected" : ""} onClick={() => crud.setSelected(a.id)}>
+                      <td>{a.utilisateur}</td>
+                      <td style={{ maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.avis}</td>
+                      <td>{a.note}</td>
+                      <td>{a.produit}</td>
+                      <td><Badge s={a.statut} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {crud.sel && (
+            <div className="groupbox">
+              <span className="groupbox-legend">Contenu sélectionné</span>
+              <textarea className="form-textarea" rows={3} readOnly value={crud.sel.avis} style={{ marginTop: 8, background: "var(--bg)" }} />
+              <div className="btn-row">
+                <button className="btn btn-success"   onClick={() => crud.updateField(crud.sel.id, "statut", "Actif",   `Avis de ${crud.sel.utilisateur} publié`)}>📢 Publier</button>
+                <button className="btn btn-warning"   onClick={() => crud.updateField(crud.sel.id, "statut", "Signalé", `Avis de ${crud.sel.utilisateur} signalé`)}>🚩 Signaler</button>
+                <button className="btn btn-secondary" onClick={() => crud.openEdit(crud.sel)}>✏️ Modifier</button>
+                <button className="btn btn-danger"    onClick={() => crud.openConfirm(crud.sel.id)}>🗑️ Supprimer</button>
+              </div>
+            </div>
+          )}
+
+          <div className="statusbar">
+            <span>{data.length} avis au total</span>
+            {crud.sel
+              ? <span>Sélection : {crud.sel.utilisateur}</span>
+              : <span style={{ color: "var(--warning)" }}>⚠ Cliquez sur un avis</span>}
+          </div>
         </div>
       </div>
 
-      {sel && (
-        <div className="groupbox">
-          <span className="groupbox-title">Avis de {sel.user}</span>
-          <div className="avis-content">{sel.texte}</div>
-          <div className="avis-meta">
-            <span className="badge badge-info">{sel.note}</span>
-            <span style={{ fontSize: 12, color: "#9ca3af" }}>Produit : {sel.produit}</span>
-          </div>
-          <div className="action-row" style={{ marginTop: 14 }}>
-            <button className="btn btn-success" onClick={publier}>✓ Publier</button>
-            <button className="btn btn-danger"  onClick={() => supprimer(sel.id)}>✕ Supprimer</button>
-            <button className="btn btn-default" onClick={() => setSel(null)}>Annuler</button>
-          </div>
-        </div>
+      {crud.editItem && (
+        <EditModal title="Modifier avis" fields={FIELDS} values={crud.editVals} onChange={crud.onChange} onSave={() => crud.saveEdit("Avis modifié")} onCancel={crud.closeEdit} />
       )}
-    </div>
+      {crud.confirmId && (
+        <ConfirmDialog itemName={`avis de ${crud.confirmItem?.utilisateur}`} onConfirm={crud.confirmDelete} onCancel={crud.closeConfirm} />
+      )}
+    </>
   );
 }

@@ -1,0 +1,8 @@
+/* Blockchain — styles spécifiques */
+
+.bc-block {
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.bc-block:hover {
+  box-shadow: 0 2px 8px rgba(27,94,32,0.10);
+}

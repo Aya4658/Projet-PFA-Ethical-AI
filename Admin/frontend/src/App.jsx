@@ -1,115 +1,208 @@
 import { useState } from "react";
 import "./App.css";
-import Home from "./components/Home/Home";
-import GererFournisseurs from "./components/GererFournisseurs/GererFournisseurs";
-import ValiderProduits from "./components/ValiderProduits/ValiderProduits";
-import ValiderCertifications from "./components/ValiderCertifications/ValiderCertifications";
 
-import GererUsers from "./components/GererUsers/GererUsers";
-import ModererAvis from "./components/ModererAvis/ModererAvis";
-import TraiterSignalements from "./components/TraiterSignalements/TraiterSignalements";
-import Statistiques from "./components/Statistiques/Statistiques";
+import { ToastContainer, ProfileModal, useToast } from "./components/shared.jsx";
+import Home              from "./components/Home/Home.jsx";
+import GererFournisseurs from "./components/GererFournisseurs/GererFournisseurs.jsx";
+import Produits          from "./components/Produits/Produits.jsx";
+import Certifications    from "./components/Certifications/Certifications.jsx";
+import Blockchain        from "./components/Blockchain/Blockchain.jsx";
+import GererUsers        from "./components/GererUsers/GererUsers.jsx";
+import ModererAvis       from "./components/ModererAvis/ModererAvis.jsx";
+import Signalements      from "./components/Signalements/Signalements.jsx";
+import Statistiques      from "./components/Statistiques/Statistiques.jsx";
 
-const NAV_ITEMS = [
-  { id: "home",                   icon: "🏠", label: "Tableau de bord" },
-  null,
-  { id: "gerer-fournisseurs",     icon: "👥", label: "Gérer comptes fournisseurs" },
-  { id: "valider-produits",       icon: "✅", label: "Valider produits" },
-  { id: "valider-certifications", icon: "🏅", label: "Valider certifications" },
-  { id: "gerer-litiges",          icon: "⚖️", label: "Gérer litiges" },
-  null,
-  { id: "gerer-users",            icon: "🧑‍💼", label: "Gérer comptes utilisateurs" },
-  { id: "moderer-avis",           icon: "💬", label: "Modérer avis" },
-  { id: "traiter-signalements",   icon: "🚨", label: "Traiter signalements" },
-  { id: "statistiques",           icon: "📊", label: "Statistiques globales" },
+// ─── INITIAL DATA ─────────────────────────────────────────────────
+const INIT = {
+  fournisseurs: [
+    { id: 1, nom: "Société Alpha", statut: "Actif",    date: "01/03/2026" },
+    { id: 2, nom: "MediaBeta",     statut: "Attente",  date: "10/04/2026" },
+    { id: 3, nom: "TechGamma",     statut: "Suspendu", date: "15/02/2026" },
+  ],
+  produits: [
+    { id: 1, nom: "Câble HDMI 4K",  fournisseur: "TechGamma",  statut: "Attente"  },
+    { id: 2, nom: "Chaise Ergo Z5", fournisseur: "Sté Alpha",  statut: "En revue" },
+    { id: 3, nom: "Masque N95",     fournisseur: "MediaBeta",  statut: "Attente"  },
+  ],
+  certifs: [
+    { id: 1, nom: "ISO 9001",    fournisseur: "Sté Alpha",  statut: "Attente" },
+    { id: 2, nom: "CE Marquage", fournisseur: "MediaBeta",  statut: "Expiré"  },
+    { id: 3, nom: "HACCP",       fournisseur: "TechGamma",  statut: "Valide"  },
+  ],
+  utilisateurs: [
+    { id: 1, nom: "Leila Mansouri", email: "leila@mail.com", statut: "Actif",  inscription: "03/01/2026" },
+    { id: 2, nom: "Karim Benali",   email: "karim@mail.com", statut: "Bloqué", inscription: "15/02/2026" },
+    { id: 3, nom: "Sara Raji",      email: "sara@mail.com",  statut: "Actif",  inscription: "20/03/2026" },
+  ],
+  avis: [
+    { id: 1, utilisateur: "Leila M.", avis: "Produit non conforme à la description, très déçue du service client.", note: "2★", produit: "Câble HDMI",    statut: "Attente" },
+    { id: 2, utilisateur: "Karim B.", avis: "Arnaque totale ! Ne commandez pas ce produit.",                        note: "1★", produit: "Supplément X", statut: "Signalé" },
+  ],
+  signalements: [
+    { id: 1, produit: "Câble HDMI 4K",      motif: "Trompeur",     statut: "Urgent"   },
+    { id: 2, produit: "Supplément X-Boost", motif: "Non conforme", statut: "En cours" },
+  ],
+};
+
+// ─── NAV CONFIG ───────────────────────────────────────────────────
+const NAV = [
+  { id: "fournisseurs",   label: "Fournisseurs",  icon: "🏭", section: "fournisseur" },
+  { id: "produits",       label: "Produits",       icon: "📦", section: "fournisseur" },
+  { id: "certifications", label: "Certifications", icon: "🏅", section: "fournisseur" },
+  { id: "blockchain",     label: "Blockchain",     icon: "⛓️", section: "fournisseur" },
+  { id: "utilisateurs",   label: "Utilisateurs",   icon: "👥", section: "user" },
+  { id: "avis",           label: "Modérer avis",   icon: "💬", section: "user" },
+  { id: "signalements",   label: "Signalements",   icon: "🚨", section: "user" },
+  { id: "statistiques",   label: "Statistiques",   icon: "📊", section: "user" },
 ];
 
-function Toast({ msg }) {
-  if (!msg) return null;
-  return <div className="toast">✓ {msg}</div>;
-}
+const TITLES = {
+  home:           "Accueil",
+  fournisseurs:   "Gérer comptes fournisseurs",
+  produits:       "Valider produits",
+  certifications: "Valider certifications",
+  blockchain:     "Vérifier Blockchain",
+  utilisateurs:   "Gérer utilisateurs",
+  avis:           "Modérer avis",
+  signalements:   "Traiter signalements",
+  statistiques:   "Statistiques globales",
+};
 
+// ─── APP ──────────────────────────────────────────────────────────
 export default function App() {
-  const [activePage, setActivePage] = useState("home");
-  const [toastMsg, setToastMsg]     = useState("");
+  const [page, setPage]           = useState("home");
+  const [tab,  setTab]            = useState("fournisseur");
+  const [showProfile, setShowProfile] = useState(false);
 
-  const toast = (msg) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(""), 2600);
-  };
+  const [fournisseurs, setFournisseurs] = useState(INIT.fournisseurs);
+  const [produits,     setProduits]     = useState(INIT.produits);
+  const [certifs,      setCertifs]      = useState(INIT.certifs);
+  const [utilisateurs, setUtilisateurs] = useState(INIT.utilisateurs);
+  const [avis,         setAvis]         = useState(INIT.avis);
+  const [signalements, setSignalements] = useState(INIT.signalements);
 
-  const renderPage = () => {
-    switch (activePage) {
-      case "home":                   return <Home setPage={setActivePage} />;
-      case "gerer-fournisseurs":     return <GererFournisseurs toast={toast} />;
-      case "valider-produits":       return <ValiderProduits toast={toast} />;
-      case "valider-certifications": return <ValiderCertifications toast={toast} />;
-      case "gerer-litiges":          return <GererLitiges toast={toast} />;
-      case "gerer-users":            return <GererUsers toast={toast} />;
-      case "moderer-avis":           return <ModererAvis toast={toast} />;
-      case "traiter-signalements":   return <TraiterSignalements toast={toast} />;
-      case "statistiques":           return <Statistiques />;
-      default:                       return <Home setPage={setActivePage} />;
+  const { toasts, showToast } = useToast();
+
+  const navigate = (id, section) => { setPage(id); setTab(section || "fournisseur"); };
+
+  const cur = NAV.find(n => n.id === page);
+
+  function PageContent() {
+    const p = { showToast };
+    switch (page) {
+      case "home":           return <Home onNavigate={navigate} />;
+      case "fournisseurs":   return <GererFournisseurs data={fournisseurs} setData={setFournisseurs} {...p} />;
+      case "produits":       return <Produits          data={produits}     setData={setProduits}     {...p} />;
+      case "certifications": return <Certifications    data={certifs}      setData={setCertifs}      {...p} />;
+      case "blockchain":     return <Blockchain                                                       {...p} />;
+      case "utilisateurs":   return <GererUsers        data={utilisateurs} setData={setUtilisateurs} {...p} />;
+      case "avis":           return <ModererAvis        data={avis}         setData={setAvis}         {...p} />;
+      case "signalements":   return <Signalements       data={signalements} setData={setSignalements} {...p} />;
+      case "statistiques":   return <Statistiques                                                     {...p} />;
+      default: return null;
     }
-  };
-
-  const currentItem = NAV_ITEMS.filter(Boolean).find(i => i.id === activePage);
+  }
 
   return (
     <div className="app-layout">
-      {/* TOP BAR */}
-      <header className="topbar">
-        <div className="topbar-left">
-          <span className="topbar-dot" />
-          <span className="topbar-sub">Admin</span>
+
+      {/* ── SIDEBAR ── */}
+      <aside className="sidebar">
+        <div className="sidebar-logo">
+          <div className="sidebar-logo-icon">🌿</div>
+          <div className="sidebar-logo-title">EthicChain Admin</div>
+          <div className="sidebar-logo-sub">Commerce équitable &amp; blockchain</div>
         </div>
-        <div className="topbar-right">
-          <span className="topbar-date">18 Avr 2026</span>
-          <div className="topbar-user">
-            <div className="topbar-avatar">A</div>
-            <span>Super Admin</span>
+
+        {/* Home link */}
+        <div
+          className={`sidebar-item ${page === "home" ? "active" : ""}`}
+          onClick={() => navigate("home")}
+        >
+          <span className="sidebar-item-icon">🏠</span>Accueil
+        </div>
+
+        <div className="sidebar-sec-title">Admin Fournisseur</div>
+        {NAV.filter(n => n.section === "fournisseur").map(n => (
+          <div
+            key={n.id}
+            className={`sidebar-item ${page === n.id ? "active" : ""}`}
+            onClick={() => navigate(n.id, "fournisseur")}
+          >
+            <span className="sidebar-item-icon">{n.icon}</span>{n.label}
+          </div>
+        ))}
+
+        <div className="sidebar-sec-title">Admin User</div>
+        {NAV.filter(n => n.section === "user").map(n => (
+          <div
+            key={n.id}
+            className={`sidebar-item ${page === n.id ? "active" : ""}`}
+            onClick={() => navigate(n.id, "user")}
+          >
+            <span className="sidebar-item-icon">{n.icon}</span>{n.label}
+          </div>
+        ))}
+
+        <div className="sidebar-profile" onClick={() => setShowProfile(true)}>
+          <div className="s-avatar">MP</div>
+          <div>
+            <div className="sidebar-profile-name">Mohamed P.</div>
+            <div className="sidebar-profile-role">Super Admin · voir profil →</div>
           </div>
         </div>
-      </header>
+      </aside>
 
-      <div className="app-body">
-        {/* SIDEBAR */}
-        <aside className="sidebar">
-          <nav className="sidebar-nav">
-            {NAV_ITEMS.map((item, idx) => {
-              if (!item) return <div key={idx} className="sidebar-divider" />;
-              const isActive = activePage === item.id;
-              return (
-                <button
-                  key={item.id}
-                  className={`sidebar-item ${isActive ? "active" : ""}`}
-                  onClick={() => setActivePage(item.id)}
-                >
-                  <span className="sidebar-icon">{item.icon}</span>
-                  <span className="sidebar-label">{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-          <div className="sidebar-footer">EthiTrace v2.1.0 · 2026</div>
-        </aside>
+      {/* ── MAIN ── */}
+      <div className="main-area">
+        <header className="topbar">
+          <div>
+            <div className="topbar-title">{cur?.icon} {TITLES[page]}</div>
+            <div className="topbar-breadcrumb">
+              EthicChain ›{" "}
+              {tab === "fournisseur" ? "Admin Fournisseur" : page === "home" ? "Accueil" : "Admin User"}
+              {page !== "home" && ` › ${TITLES[page]}`}
+            </div>
+          </div>
+          <div className="topbar-right">
+            <div className="topbar-btn" style={{ padding: "0 10px", fontSize: 16 }}>
+              🔔<div className="notif-dot" />
+            </div>
+            <div className="topbar-btn" style={{ padding: "0 10px", fontSize: 16 }}>⚙️</div>
+            <div className="topbar-btn" onClick={() => setShowProfile(true)}>
+              <div className="s-avatar" style={{ width: 26, height: 26, fontSize: 11, flexShrink: 0 }}>MP</div>
+              Mon compte
+            </div>
+          </div>
+        </header>
 
-        {/* MAIN CONTENT */}
-        <main className="main-content">
-          {activePage !== "home" && (
-            <div className="page-header">
-              <div className="page-header-bar">
-                <div className="page-header-accent" />
-                <h1 className="page-title">{currentItem?.label}</h1>
-              </div>
-              <div className="page-header-line" />
+        {page !== "home" && (
+          <div style={{ padding: "16px 24px 0" }}>
+            <div className="page-tabs">
+              <div
+                className={`page-tab ${tab === "fournisseur" ? "active" : ""}`}
+                onClick={() => navigate("fournisseurs", "fournisseur")}
+              >🏭 Admin Fournisseur</div>
+              <div
+                className={`page-tab ${tab === "user" ? "active" : ""}`}
+                onClick={() => navigate("utilisateurs", "user")}
+              >👥 Admin User</div>
+            </div>
+          </div>
+        )}
+
+        <div className="content-area">
+          {page !== "home" && (
+            <div className="section-label">
+              ▶ {tab === "fournisseur" ? "Admin Fournisseur" : "Admin User"} — {TITLES[page]}
             </div>
           )}
-          <div className="page-body">{renderPage()}</div>
-        </main>
+          <PageContent />
+        </div>
       </div>
 
-      <Toast msg={toastMsg} />
+      {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
+      <ToastContainer toasts={toasts} />
     </div>
   );
 }

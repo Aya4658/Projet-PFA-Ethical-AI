@@ -1,51 +1,32 @@
 import "./Home.css";
 
-const STATS = [
-  { value: "5 421", label: "Utilisateurs",  color: "#4ade80" },
-  { value: "183",   label: "Fournisseurs",  color: "#60a5fa" },
-  { value: "8 934", label: "Commandes",     color: "#4ade80" },
-  { value: "4.7★",  label: "Note moyenne",  color: "#fbbf24" },
-];
+export default function Home({ onNavigate }) {
+  const cards = [
+    { icon: "🏭", label: "Fournisseurs",  desc: "Gérer et approuver les comptes",   page: "fournisseurs",   section: "fournisseur" },
+    { icon: "📦", label: "Produits",       desc: "Valider avant publication",         page: "produits",       section: "fournisseur" },
+    { icon: "🏅", label: "Certifications", desc: "Contrôler les certifications",      page: "certifications", section: "fournisseur" },
+    { icon: "⛓️", label: "Blockchain",     desc: "Vérifier la cohérence des blocs",   page: "blockchain",     section: "fournisseur" },
+    { icon: "👥", label: "Utilisateurs",   desc: "Gérer les comptes utilisateurs",    page: "utilisateurs",   section: "user" },
+    { icon: "💬", label: "Avis",           desc: "Modérer les avis clients",          page: "avis",           section: "user" },
+    { icon: "🚨", label: "Signalements",   desc: "Traiter les signalements urgents",  page: "signalements",   section: "user" },
+    { icon: "📊", label: "Statistiques",   desc: "Consulter les indicateurs globaux", page: "statistiques",   section: "user" },
+  ];
 
-const SHORTCUTS = [
-  { id: "gerer-fournisseurs",     icon: "👥", label: "Gérer comptes fournisseurs",  desc: "Approuver, suspendre ou supprimer des fournisseurs" },
-  { id: "valider-produits",       icon: "✅", label: "Valider produits",            desc: "Examiner les produits en attente de publication" },
-  { id: "valider-certifications", icon: "🏅", label: "Valider certifications",      desc: "Contrôler les certifications fournisseurs" },
-
-  { id: "gerer-users",            icon: "🧑‍💼", label: "Gérer utilisateurs",          desc: "Gérer les comptes consommateurs" },
-  { id: "moderer-avis",           icon: "💬", label: "Modérer avis",               desc: "Publier ou supprimer les avis clients" },
-  { id: "traiter-signalements",   icon: "🚨", label: "Traiter signalements",        desc: "Prendre des décisions sur les produits signalés" },
-  { id: "statistiques",           icon: "📊", label: "Statistiques globales",       desc: "Consulter les indicateurs clés de la plateforme" },
-];
-
-export default function Home({ setPage }) {
   return (
-    <div className="home-page">
+    <div className="home-wrapper">
       <div className="home-hero">
-        <div className="home-hero-dot" />
-        <h1 className="home-title">Tableau de bord</h1>
-        <p className="home-subtitle">Bienvenue dans la console d'administration </p>
+        <div className="home-hero-icon">🌿</div>
+        <h1 className="home-hero-title">Bienvenue sur EthicChain Admin</h1>
+        <p className="home-hero-sub">Plateforme de commerce équitable &amp; blockchain — Tableau de bord principal</p>
       </div>
 
-      <div className="stat-grid-4">
-        {STATS.map((s, i) => (
-          <div className="stat-box" key={i}>
-            <div className="stat-value" style={{ color: s.color }}>{s.value}</div>
-            <div className="stat-label">{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="home-section-title">Accès rapide</div>
       <div className="home-grid">
-        {SHORTCUTS.map(sc => (
-          <button key={sc.id} className="home-card" onClick={() => setPage(sc.id)}>
-            <span className="home-card-icon">{sc.icon}</span>
-            <div>
-              <div className="home-card-label">{sc.label}</div>
-              <div className="home-card-desc">{sc.desc}</div>
-            </div>
-          </button>
+        {cards.map(c => (
+          <div key={c.page} className="home-card" onClick={() => onNavigate(c.page, c.section)}>
+            <div className="home-card-icon">{c.icon}</div>
+            <div className="home-card-label">{c.label}</div>
+            <div className="home-card-desc">{c.desc}</div>
+          </div>
         ))}
       </div>
     </div>

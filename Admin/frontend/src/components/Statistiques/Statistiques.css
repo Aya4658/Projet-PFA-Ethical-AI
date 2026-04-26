@@ -1,1 +1,7 @@
-.st-page { display: flex; flex-direction: column; }
+/* Statistiques — styles spécifiques */
+
+.stats-kpi-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
