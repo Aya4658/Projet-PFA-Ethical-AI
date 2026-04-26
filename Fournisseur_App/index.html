@@ -4,12 +4,155 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EthiChain — Espace Fournisseur</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <header class="app-header">
+      <div class="container header-row">
+        <div class="brand">
+          <div class="logo">
+            <!-- Enhanced logo: white background, realistic leaf and two small trees -->
+            <svg class="logo-svg" width="56" height="56" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+              <rect width="64" height="64" rx="10" fill="#ffffff" />
+              <!-- trees removed per request -->
+
+              <!-- realistic stylized leaf that can 'fall' -->
+              <g class="leaf-group">
+                <!-- more natural, elegant leaf shape -->
+                <path class="leaf" d="M28 2
+                  C16 6 6 18 6 30
+                  C6 42 18 52 32 54
+                  C46 52 58 42 58 30
+                  C58 18 44 6 32 4
+                  C30 3 28 2 28 2 Z"
+                  fill="#0b6b3a" stroke="#064227" stroke-width="0.6"/>
+
+                <!-- central vein with subtle branches -->
+                <path class="leaf-vein" d="M32 6
+                  L32 50
+                  M28 14 L20 20
+                  M36 18 L44 24
+                  M26 28 L18 34
+                  M38 30 L48 36"
+                  fill="none" stroke="#074b2a" stroke-width="0.8" stroke-linecap="round"/>
+              </g>
+            </svg>
+          </div>
+          <div>
+            <h1>Espace Fournisseur</h1>
+            <p class="subtitle">Gestion produits & traçabilité — EthiChain</p>
+          </div>
+        </div>
+        <div id="stock-alerts" class="small muted"></div>
+      </div>
+    </header>
+
+    <main class="container layout">
+      <aside class="sidebar">
+        <nav>
+          <ul>
+            <li data-tab="suppliers" class="active">Fournisseurs</li>
+            <li data-tab="products">Produits</li>
+            <li data-tab="dashboard">Dashboard</li>
+          </ul>
+        </nav>
+      </aside>
+
+      <section class="content">
+        <!-- Suppliers view -->
+        <div id="view-suppliers" class="view">
+          <div class="controls">
+            <input id="search" placeholder="Rechercher un fournisseur..." />
+            <button id="btn-add" class="primary">Nouveau fournisseur</button>
+          </div>
+
+          <div id="form-area" class="card hidden">
+            <h2>Ajouter un fournisseur</h2>
+            <form id="supplier-form">
+              <div class="row">
+                <input name="name" placeholder="Nom" required />
+                <input name="email" type="email" placeholder="Email" />
+              </div>
+              <div class="row">
+                <input name="phone" placeholder="Téléphone" />
+                <input name="country" placeholder="Pays" />
+              </div>
+              <div class="row actions">
+                <button type="submit" class="primary">Enregistrer</button>
+                <button type="button" id="btn-cancel">Annuler</button>
+              </div>
+            </form>
+          </div>
+
+          <div id="list" class="list"></div>
+        </div>
+
+        <!-- Products view -->
+        <div id="view-products" class="view hidden">
+          <div class="controls">
+            <input id="search-products" placeholder="Rechercher un produit..." />
+            <button id="btn-add-product" class="primary">Nouveau produit</button>
+            <div style="margin-left:auto;display:flex;gap:8px">
+              <input id="csv-import" type="file" accept="text/csv,application/json" />
+              <button id="csv-export" class="btn-ghost">Exporter CSV</button>
+            </div>
+          </div>
+
+          <div id="product-form-area" class="card hidden">
+            <h2 id="product-form-title">Ajouter un produit</h2>
+            <form id="product-form">
+              <input name="id" type="hidden">
+              <div class="row">
+                <input name="name" placeholder="Nom du produit" required />
+                <input name="sku" placeholder="Référence (SKU)" />
+              </div>
+              <div class="row">
+                <input name="price" type="number" step="0.01" placeholder="Prix (€)" />
+                <input name="stock" type="number" placeholder="Stock" />
+              </div>
+              <div class="row">
+                <input name="producer" placeholder="Producteur" />
+                <input name="country" placeholder="Pays d'origine" />
+              </div>
+              <div class="row">
+                <label class="small">Certificats :</label>
+                <input id="cert-upload" type="file" multiple />
+                <label class="small">Date d'expiration (optionnelle):</label>
+                <input name="certExpiry" id="cert-expiry" type="date" />
+              </div>
+              <div class="row actions">
+                <button type="submit" class="primary">Enregistrer</button>
+                <button type="button" id="btn-cancel-product">Annuler</button>
+                <input id="prefill-json" type="file" accept="application/json" />
+              </div>
+            </form>
+            <div id="cert-list" class="small muted"></div>
+          </div>
+
+          <div id="product-list" class="list"></div>
+        </div>
+
+        <!-- Dashboard view -->
+        <div id="view-dashboard" class="view hidden">
+          <div class="card">
+            <h2>Tableau de bord</h2>
+            <div id="dashboard-stats" class="row"></div>
+          </div>
+          <div id="blockchain-history" class="card">
+            <h3>Historique blockchain (simulé)</h3>
+            <div id="history-list" class="small muted"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <div class="container">© EthiChain — Fournisseurs</div>
+    </footer>
+
+    <script src="index.js" type="module"></script>
   </body>
 </html>

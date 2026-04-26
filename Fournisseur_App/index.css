@@ -1,0 +1,93 @@
+:root{
+  --bg:#eef6ed; /* subtle green-tinted background */
+  --card:#ffffff; /* clean card */
+  --muted:#3f4a3f; /* deeper muted green/taupe */
+  --primary:#064227; /* stronger dark green */
+  --accent:#b7cbb3; /* soft green-beige accent */
+  --danger:#8b2b2b;
+  --container:1100px;
+  font-family: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:#111}
+.container{max-width:var(--container);margin:0 auto;padding:16px}
+.app-header{background:linear-gradient(90deg,var(--bg) 0%, #f6fbf6 100%);border-bottom:1px solid rgba(6,66,39,0.06)}
+.app-header h1{margin:8px 0;font-size:20px;color:var(--primary);letter-spacing:0.2px}
+.subtitle{margin:0;color:var(--muted);font-size:13px}
+.layout{display:flex;gap:20px;padding-top:20px}
+.sidebar{width:200px}
+.sidebar nav ul{list-style:none;padding:12px;margin:0}
+.sidebar nav li{padding:10px;border-radius:8px;color:var(--muted);cursor:default}
+.sidebar nav li.active{background:var(--card);box-shadow:0 1px 2px rgba(16,24,40,0.04);color:#111}
+.content{flex:1}
+.controls{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+.controls input{flex:1;padding:10px;border-radius:8px;border:1px solid rgba(6,66,39,0.12);background:#fbfffb}
+.primary{background:var(--primary);color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;box-shadow:0 4px 10px rgba(6,66,39,0.12)}
+.card{background:var(--card);padding:12px;border-radius:10px;box-shadow:0 8px 24px rgba(6,66,39,0.06);margin-bottom:12px}
+.hidden{display:none}
+.list{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.supplier{background:var(--card);padding:12px;border-radius:8px;display:flex;flex-direction:column;gap:8px}
+.supplier h3{margin:0;font-size:16px}
+.muted{color:var(--muted);font-size:13px}
+.row{display:flex;gap:12px}
+.row input{flex:1;padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06)}
+.actions{justify-content:flex-end}
+.btn-ghost{background:transparent;border:1px solid rgba(6,66,39,0.14);padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--primary)}
+.meta{display:flex;justify-content:space-between;align-items:center}
+.small{font-size:12px;color:var(--muted)}
+.app-footer{margin-top:24px;padding:14px 0;color:var(--muted)}
+
+@media (max-width:800px){
+  .layout{flex-direction:column}
+  .sidebar{width:100%}
+}
+
+/* Products & dashboard */
+.view{display:block}
+.hidden{display:none}
+.logo{display:flex;align-items:center;gap:12px}
+.brand{display:flex;justify-content:space-between;align-items:center}
+.header-row{display:flex;align-items:center;justify-content:space-between}
+.badge{background:var(--primary);color:#fff;padding:4px 8px;border-radius:999px;font-size:12px}
+.logo-svg{overflow:visible}
+
+/* ensure CSS transforms use SVG bounding box so centering is accurate */
+.logo-svg{display:block;}
+
+.leaf-vein{opacity:0.95}
+
+/* Animate the whole leaf group so veins follow the leaf */
+.leaf-group{transform-box:fill-box;transform-origin:50% 50%;animation:leafFloat 4200ms ease-in-out infinite;filter:drop-shadow(0 3px 4px rgba(6,66,39,0.14));
+  /* centered in 64x64 box and scaled by 150% from previous 0.372 */
+  transform: translate(0px,0px) scale(0.558);
+}
+
+@keyframes leafFloat{
+  0%{transform:translate(0px,0px) rotate(-6deg) scale(0.558);opacity:1}
+  25%{transform:translate(4px,4px) rotate(8deg) scale(0.558)}
+  50%{transform:translate(-2px,10px) rotate(20deg) scale(0.558);opacity:0.95}
+  75%{transform:translate(3px,6px) rotate(6deg) scale(0.558)}
+  100%{transform:translate(0px,0px) rotate(-6deg) scale(0.558);opacity:1}
+}
+
+.tree circle{transition:transform 0.4s}
+.tree:hover circle{transform:scale(1.05)}
+.product{padding:14px;border-radius:10px;background:var(--card);display:flex;flex-direction:column;min-height:170px}
+.product .meta{gap:8px}
+
+/* Ensure action button rows wrap instead of overflowing or overlapping adjacent cards */
+.product > div:last-child{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+.product .btn-ghost{min-width:72px;padding:6px 10px;white-space:nowrap;font-size:13px}
+.product .btn-export{padding:6px 8px}
+
+/* certificate badges shown on cards */
+.cert-row{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
+.cert-badge{display:inline-block;padding:6px 8px;border-radius:999px;font-size:12px;color:#fff}
+.cert-pending{background:var(--accent);color:var(--primary)}
+.cert-validated{background:#0b8a4a}
+.cert-expired{background:var(--danger)}
+.cert-item{font-size:12px;color:var(--muted)}
+.csv-area{display:flex;gap:8px}
+.dashboard-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.alert{background:#fff3cd;border:1px solid #ffeeba;padding:10px;border-radius:8px;color:#856404}
+
