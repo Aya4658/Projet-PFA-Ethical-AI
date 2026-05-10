@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./App.css";
 
 import { ToastContainer, ProfileModal, useToast } from "./components/shared.jsx";
@@ -29,11 +29,7 @@ const INIT = {
     { id: 2, nom: "CE Marquage", fournisseur: "MediaBeta",  statut: "Expiré"  },
     { id: 3, nom: "HACCP",       fournisseur: "TechGamma",  statut: "Valide"  },
   ],
-  utilisateurs: [
-    { id: 1, nom: "Leila Mansouri", email: "leila@mail.com", statut: "Actif",  inscription: "03/01/2026" },
-    { id: 2, nom: "Karim Benali",   email: "karim@mail.com", statut: "Bloqué", inscription: "15/02/2026" },
-    { id: 3, nom: "Sara Raji",      email: "sara@mail.com",  statut: "Actif",  inscription: "20/03/2026" },
-  ],
+  utilisateurs: [],
   avis: [
     { id: 1, utilisateur: "Leila M.", avis: "Produit non conforme à la description, très déçue du service client.", note: "2★", produit: "Câble HDMI",    statut: "Attente" },
     { id: 2, utilisateur: "Karim B.", avis: "Arnaque totale ! Ne commandez pas ce produit.",                        note: "1★", produit: "Supplément X", statut: "Signalé" },
@@ -78,6 +74,13 @@ export default function App() {
   const [produits,     setProduits]     = useState(INIT.produits);
   const [certifs,      setCertifs]      = useState(INIT.certifs);
   const [utilisateurs, setUtilisateurs] = useState(INIT.utilisateurs);
+
+  useEffect(() => {
+    fetch("http://localhost:5000/api/users")
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setUtilisateurs(data); })
+      .catch(() => {});
+  }, []);
   const [avis,         setAvis]         = useState(INIT.avis);
   const [signalements, setSignalements] = useState(INIT.signalements);
 

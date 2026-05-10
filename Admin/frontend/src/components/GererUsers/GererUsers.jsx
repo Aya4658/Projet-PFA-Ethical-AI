@@ -1,6 +1,9 @@
+//http://localhost:5000/api/users
 import { useState } from "react";
 import { Badge, useCRUD, EditModal, ConfirmDialog } from "../shared.jsx";
 import "./GererUsers.css";
+
+const API = "http://localhost:5000/api/users";
 
 const FIELDS = [
   { key: "nom",         label: "Nom complet" },
@@ -13,6 +16,44 @@ export default function GererUsers({ data, setData, showToast }) {
   const [recherche, setRecherche] = useState("");
   const [filtreStatut, setFiltreStatut] = useState("Tous");
   const crud = useCRUD(data, setData, showToast, u => u.nom);
+
+  const handleStatut = async (statut, msg) => {
+    try {
+      const res = await fetch(`${API}/${crud.sel.id}/statut`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ statut }),
+      });
+      if (!res.ok) throw new Error();
+      crud.updateField(crud.sel.id, "statut", statut, msg);
+    } catch {
+      showToast("danger", "❌", "Erreur de connexion au serveur");
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      const res = await fetch(`${API}/${crud.editItem.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(crud.editVals),
+      });
+      if (!res.ok) throw new Error();
+      crud.saveEdit();
+    } catch {
+      showToast("danger", "❌", "Erreur de connexion au serveur");
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      const res = await fetch(`${API}/${crud.confirmId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      crud.confirmDelete();
+    } catch {
+      showToast("danger", "❌", "Erreur de connexion au serveur");
+    }
+  };
 
   const filtered = data.filter(u =>
     u.nom.toLowerCase().includes(recherche.toLowerCase()) &&
@@ -73,8 +114,8 @@ export default function GererUsers({ data, setData, showToast }) {
             )}
 
             <div className="btn-row">
-              <button className="btn btn-warning"   disabled={!crud.sel || crud.sel.statut === "Bloqué"} onClick={() => crud.updateField(crud.sel.id, "statut", "Bloqué", `${crud.sel.nom} bloqué`)}>⛔ Bloquer</button>
-              <button className="btn btn-success"   disabled={!crud.sel || crud.sel.statut === "Actif"}  onClick={() => crud.updateField(crud.sel.id, "statut", "Actif",  `${crud.sel.nom} débloqué`)}>✅ Débloquer</button>
+              <button className="btn btn-warning"   disabled={!crud.sel || crud.sel.statut === "Bloqué"} onClick={() => handleStatut("Bloqué", `${crud.sel.nom} bloqué`)}>⛔ Bloquer</button>
+              <button className="btn btn-success"   disabled={!crud.sel || crud.sel.statut === "Actif"}  onClick={() => handleStatut("Actif", `${crud.sel.nom} débloqué`)}>✅ Débloquer</button>
               <button className="btn btn-secondary" disabled={!crud.sel} onClick={() => crud.openEdit(crud.sel)}>✏️ Modifier</button>
               <button className="btn btn-danger"    disabled={!crud.sel} onClick={() => crud.openConfirm(crud.sel.id)}>🗑️ Supprimer</button>
             </div>
@@ -90,10 +131,10 @@ export default function GererUsers({ data, setData, showToast }) {
       </div>
 
       {crud.editItem && (
-        <EditModal title={`Modifier — ${crud.editItem.nom}`} fields={FIELDS} values={crud.editVals} onChange={crud.onChange} onSave={() => crud.saveEdit()} onCancel={crud.closeEdit} />
+        <EditModal title={`Modifier — ${crud.editItem.nom}`} fields={FIELDS} values={crud.editVals} onChange={crud.onChange} onSave={handleSaveEdit} onCancel={crud.closeEdit} />
       )}
       {crud.confirmId && (
-        <ConfirmDialog itemName={crud.confirmItem?.nom} onConfirm={crud.confirmDelete} onCancel={crud.closeConfirm} />
+        <ConfirmDialog itemName={crud.confirmItem?.nom} onConfirm={handleDelete} onCancel={crud.closeConfirm} />
       )}
     </>
   );
