@@ -6,7 +6,7 @@ import time
 import os
 import sys
 
-API_URL = "http://127.0.0.1:8000"
+API_URL = "http://127.0.0.1:8001"
 
 # ─── API UNIT TESTS (no browser needed) ────────────────────────────────────
 
@@ -14,9 +14,9 @@ class TestAPIDirectly:
     """Test the FastAPI /chat endpoint directly with HTTP requests."""
 
     def test_server_is_running(self):
-        """Server must respond on port 8000."""
+        """Server must respond on port 8001."""
         response = requests.get(f"{API_URL}/docs")
-        assert response.status_code == 200, "FastAPI server is not running on port 8000"
+        assert response.status_code == 200, "FastAPI server is not running on port 8001"
 
     def test_chat_returns_valid_json(self):
         """POST /chat must return JSON with a 'reply' key."""

@@ -33,7 +33,7 @@
   <div id="status"></div>
 
   <script>
-    const API_URL = "http://127.0.0.1:8000/chat";
+    const API_URL = "http://127.0.0.1:8001/chat";
 
     async function sendMessage() {
       const input = document.getElementById("user-input");
@@ -56,7 +56,7 @@
         chatBox.innerHTML += `<div class="bot-msg"><b>AI :</b> ${data.reply}</div>`;
         status.textContent = "";
       } catch (err) {
-        chatBox.innerHTML += `<div class="error-msg"><b>Erreur :</b> Impossible de contacter le serveur. Assurez-vous que le backend tourne sur le port 8000.</div>`;
+        chatBox.innerHTML += `<div class="error-msg"><b>Erreur :</b> Impossible de contacter le serveur. Assurez-vous que le backend tourne sur le port 8001.</div>`;
         status.textContent = "";
       }
       chatBox.scrollTop = chatBox.scrollHeight;

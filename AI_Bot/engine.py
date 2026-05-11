@@ -1,11 +1,11 @@
 import os
-from google import genai
+from groq import Groq
 from dotenv import load_dotenv
 from database import db_manager
 
 load_dotenv()
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 def extract_keywords(user_query: str) -> list:
     """Remove French stop words and return meaningful keywords."""
@@ -43,7 +43,7 @@ def get_ethical_analysis(user_query: str):
     if not found_products:
         return "Désolé, je n'ai aucune information sur ce produit dans ma base de données éthique."
 
-    # 3. AUGMENTATION: Build context for Gemini
+    # 3. AUGMENTATION: Build context for the LLM
     context = "Voici les données réelles de ma base de données :\n"
     for p in found_products:
         labels = p.get('labels', [])
@@ -60,7 +60,7 @@ def get_ethical_analysis(user_query: str):
             f"Labels: {labels_str}\n"
         )
 
-    # 4. GENERATION: Ask Gemini with strict instructions
+    # 4. GENERATION: Ask Groq with strict instructions
     prompt = f"""
     Tu es un assistant expert en commerce éthique.
     Tu dois répondre UNIQUEMENT en utilisant les données fournies ci-dessous.
@@ -75,10 +75,11 @@ def get_ethical_analysis(user_query: str):
     """
 
     try:
-        response = client.models.generate_content(
-            model="gemini-1.5-flash",
-            contents=prompt
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
         )
-        return response.text
+        return response.choices[0].message.content
     except Exception as e:
         return f"Erreur technique (Quota ou API) : {str(e)}"
