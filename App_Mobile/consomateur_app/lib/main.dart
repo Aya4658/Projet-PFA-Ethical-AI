@@ -111,9 +111,28 @@ class AuthWrapper extends StatelessWidget {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         if (authProvider.isLoading) {
-          return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
+          return Scaffold(
+            body: Container(
+              decoration: BoxDecoration(gradient: AppTheme.primaryGradient),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.15),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                      ),
+                      child: const Icon(Icons.eco_rounded, color: Colors.white, size: 36),
+                    ),
+                    const SizedBox(height: 24),
+                    const CircularProgressIndicator(color: Colors.white),
+                  ],
+                ),
+              ),
             ),
           );
         }

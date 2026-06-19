@@ -1,8 +1,12 @@
-const crypto = require("crypto");
+const nodeCrypto = require("crypto");
 const express = require("express");
 const cors = require("cors");
+
 const { MongoClient } = require("mongodb");
 require("dotenv").config();
+
+globalThis.crypto = globalThis.crypto || nodeCrypto.webcrypto;
+global.crypto = global.crypto || nodeCrypto.webcrypto;
 
 const app = express();
 app.use(cors());
@@ -16,14 +20,18 @@ if (!MONGODB_URI) {
   throw new Error("Missing MONGODB_URI in backend/.env");
 }
 
-const client = new MongoClient(MONGODB_URI);
+const client = new MongoClient(MONGODB_URI, {
+  serverSelectionTimeoutMS: 10000,
+  connectTimeoutMS: 10000,
+  retryWrites: true,
+});
 let db;
 let usersCollectionName = "users";
 let productsCollectionName = "products";
 let producersCollectionName = "producers";
 
 function sha256(input) {
-  return crypto.createHash("sha256").update(input).digest("hex");
+  return nodeCrypto.createHash("sha256").update(input).digest("hex");
 }
 
 async function resolveCollectionName(preferred, fallback) {

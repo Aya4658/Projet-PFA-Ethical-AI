@@ -1,145 +1,139 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:consomateur_app/core/theme/app_theme.dart';
+import 'package:consomateur_app/core/widgets/app_card.dart';
+import 'package:consomateur_app/core/widgets/app_empty_state.dart';
 import 'package:consomateur_app/features/product_discovery/domain/repositories/product_repository.dart';
 import 'package:consomateur_app/features/product_discovery/domain/entities/product.dart';
 import 'package:consomateur_app/features/user_management/presentation/providers/auth_provider.dart';
 
-class ScanHistoryScreen extends StatefulWidget {
+class ScanHistoryScreen extends StatelessWidget {
   final ProductRepository productRepository;
 
   const ScanHistoryScreen({super.key, required this.productRepository});
 
   @override
-  State<ScanHistoryScreen> createState() => _ScanHistoryScreenState();
-}
-
-class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Consumer<AuthProvider>(
-        builder: (context, authProvider, child) {
-          final user = authProvider.currentUser;
-          final scanHistory = user?.scanHistory ?? [];
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        final scanHistory = authProvider.currentUser?.scanHistory ?? [];
 
-          return CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                pinned: true,
-                title: const Text('Scan History'),
-                backgroundColor: Theme.of(context).primaryColor,
-                actions: [
-                  if (scanHistory.isNotEmpty)
-                    PopupMenuButton(
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(
-                          child: Text('Clear History'),
+        if (scanHistory.isEmpty) {
+          return const AppEmptyState(
+            icon: Icons.history_rounded,
+            title: 'No scan history yet',
+            subtitle: 'Products you scan will appear here for quick access',
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+          itemCount: scanHistory.length,
+          itemBuilder: (context, index) {
+            final historyItem = scanHistory[index];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: FutureBuilder<Product>(
+                future: context.read<ProductRepository>().getProductById(historyItem.productId),
+                builder: (context, snapshot) {
+                  final isLoading = snapshot.connectionState == ConnectionState.waiting;
+                  final product = snapshot.data;
+                  final title = isLoading
+                      ? 'Loading...'
+                      : product?.name ?? 'Unknown product';
+                  final subtitle = DateFormat('MMM dd, yyyy · hh:mm a')
+                      .format(historyItem.scannedAt);
+
+                  return AppCard(
+                    onTap: product == null
+                        ? null
+                        : () {
+                            Navigator.pushNamed(
+                              context,
+                              '/product-detail',
+                              arguments: product,
+                            );
+                          },
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: isLoading
+                              ? const Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(
+                                  Icons.qr_code_2_rounded,
+                                  color: AppTheme.primaryColor,
+                                ),
                         ),
-                      ],
-                      onSelected: (value) {
-                        // TODO: Implement clear history
-                      },
-                    ),
-                ],
-              ),
-              if (scanHistory.isEmpty)
-                SliverToBoxAdapter(
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const SizedBox(height: 48),
-                          Icon(
-                            Icons.history,
-                            size: 64,
-                            color: Colors.grey[400],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No scan history yet',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Your scanned products will appear here',
-                            style: TextStyle(color: Colors.grey[600]),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                )
-              else
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final historyItem = scanHistory[index];
-                      return FutureBuilder<Product>(
-                        future: context.read<ProductRepository>().getProductById(historyItem.productId),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const ListTile(
-                              leading: Icon(Icons.qr_code_2),
-                              title: CircularProgressIndicator(),
-                            );
-                          }
-
-                          if (snapshot.hasError) {
-                            return ListTile(
-                              leading: const Icon(Icons.qr_code_2),
-                              title: const Text('Unknown Product'),
-                              subtitle: Text(DateFormat('MMM dd, yyyy - hh:mm a').format(historyItem.scannedAt)),
-                            );
-                          }
-
-                          final product = snapshot.data;
-                          if (product == null) {
-                            return ListTile(
-                              leading: const Icon(Icons.qr_code_2),
-                              title: const Text('Product Not Found'),
-                              subtitle: Text(DateFormat('MMM dd, yyyy - hh:mm a').format(historyItem.scannedAt)),
-                            );
-                          }
-
-                          return ListTile(
-                            leading: const Icon(Icons.qr_code_2),
-                            title: Text(product.name),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(DateFormat('MMM dd, yyyy - hh:mm a').format(historyItem.scannedAt)),
-                                if (historyItem.wasAlternativeChosen)
-                                  const Padding(
-                                    padding: EdgeInsets.only(top: 4.0),
-                                    child: Text(
-                                      'Alternative chosen',
-                                      style: TextStyle(color: Colors.green),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15,
+                                  color: AppTheme.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                subtitle,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                              if (historyItem.wasAlternativeChosen) ...[
+                                const SizedBox(height: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.accentColor.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    'Alternative chosen',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppTheme.primaryColor,
                                     ),
                                   ),
+                                ),
                               ],
-                            ),
-                            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                            onTap: () {
-                              Navigator.pushNamed(
-                                context,
-                                '/product-detail',
-                                arguments: product,
-                              );
-                            },
-                          );
-                        },
-                      );
-                    },
-                    childCount: scanHistory.length,
-                  ),
-                ),
-            ],
-          );
-        },
-      ),
+                            ],
+                          ),
+                        ),
+                        if (product != null)
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: AppTheme.textSecondary.withValues(alpha: 0.5),
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

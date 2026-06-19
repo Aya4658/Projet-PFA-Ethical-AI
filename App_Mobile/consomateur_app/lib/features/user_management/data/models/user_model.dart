@@ -18,8 +18,12 @@ class UserModel extends User {
       name: json['name'] as String,
       email: json['email'] as String,
       country: json['country'] as String,
-      preferences: UserPreferencesModel.fromJson(json['preferences'] as Map<String, dynamic>),
-      stats: UserStatsModel.fromJson(json['stats'] as Map<String, dynamic>),
+      preferences: UserPreferencesModel.fromJson(
+        Map<String, dynamic>.from(json['preferences'] as Map? ?? {}),
+      ),
+      stats: UserStatsModel.fromJson(
+        Map<String, dynamic>.from(json['stats'] as Map? ?? {}),
+      ),
       favorites: List<String>.from(json['favorites'] ?? []),
       scanHistory: (json['scan_history'] as List<dynamic>?)
           ?.map((item) => ScanHistoryItemModel.fromJson(item as Map<String, dynamic>))

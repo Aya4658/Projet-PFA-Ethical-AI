@@ -15,6 +15,8 @@ class Product extends Equatable {
   final List<String> labels;
   final int stock;
   final double rating;
+  final String? blockchainRootHash;
+  final List<ProductProcess> processes;
 
   const Product({
     required this.id,
@@ -31,6 +33,8 @@ class Product extends Equatable {
     required this.labels,
     required this.stock,
     required this.rating,
+    this.blockchainRootHash,
+    this.processes = const [],
   });
 
   Product copyWith({
@@ -48,6 +52,8 @@ class Product extends Equatable {
     List<String>? labels,
     int? stock,
     double? rating,
+    String? blockchainRootHash,
+    List<ProductProcess>? processes,
   }) {
     return Product(
       id: id ?? this.id,
@@ -64,6 +70,8 @@ class Product extends Equatable {
       labels: labels ?? this.labels,
       stock: stock ?? this.stock,
       rating: rating ?? this.rating,
+      blockchainRootHash: blockchainRootHash ?? this.blockchainRootHash,
+      processes: processes ?? this.processes,
     );
   }
 
@@ -84,19 +92,21 @@ class Product extends Equatable {
       labels,
       stock,
       rating,
+      blockchainRootHash,
+      processes,
     ];
   }
 }
 
 class ProductComposition extends Equatable {
-  final String material;
+  final String ingredient;
   final int percentage;
   final String origin;
   final bool isRecycled;
   final bool isOrganic;
 
   const ProductComposition({
-    required this.material,
+    required this.ingredient,
     required this.percentage,
     required this.origin,
     required this.isRecycled,
@@ -105,8 +115,23 @@ class ProductComposition extends Equatable {
 
   @override
   List<Object?> get props {
-    return [material, percentage, origin, isRecycled, isOrganic];
+    return [ingredient, percentage, origin, isRecycled, isOrganic];
   }
+}
+
+class ProductProcess extends Equatable {
+  final int stepNumber;
+  final String process;
+  final String previousHash;
+
+  const ProductProcess({
+    required this.stepNumber,
+    required this.process,
+    required this.previousHash,
+  });
+
+  @override
+  List<Object?> get props => [stepNumber, process, previousHash];
 }
 
 class ProducerInfo extends Equatable {
