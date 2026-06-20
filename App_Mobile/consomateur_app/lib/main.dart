@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/theme/app_theme.dart';
+import 'features/product_discovery/data/datasources/open_food_facts_remote_data_source.dart';
 import 'features/product_discovery/data/datasources/product_remote_data_source.dart';
 import 'features/product_discovery/data/repositories/product_repository_impl.dart';
 import 'features/product_discovery/domain/entities/product.dart';
@@ -50,7 +51,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     // Initialize repositories
     final ProductRemoteDataSource productRemoteDataSource = ProductRemoteDataSourceImpl();
-    final ProductRepository productRepository = ProductRepositoryImpl(productRemoteDataSource);
+    final OpenFoodFactsRemoteDataSource openFoodFactsRemoteDataSource = OpenFoodFactsRemoteDataSourceImpl();
+    final ProductRepository productRepository = ProductRepositoryImpl(
+      productRemoteDataSource,
+      openFoodFactsRemoteDataSource,
+    );
 
     final UserRemoteDataSource userRemoteDataSource = UserRemoteDataSourceImpl();
     final UserRepository userRepository = UserRepositoryImpl(

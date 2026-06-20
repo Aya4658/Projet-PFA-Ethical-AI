@@ -14,4 +14,7 @@ abstract class ProductRepository {
 
   /// Returns all products from the database.
   Future<List<Product>> getAllProducts();
+
+  /// Searches products first in MongoDB, then falls back to Open Food Facts.
+  Future<List<Product>> searchProducts(String query);
 }

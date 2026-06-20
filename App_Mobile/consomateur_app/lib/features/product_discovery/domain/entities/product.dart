@@ -17,6 +17,7 @@ class Product extends Equatable {
   final double rating;
   final String? blockchainRootHash;
   final List<ProductProcess> processes;
+  final ProductSource source;
 
   const Product({
     required this.id,
@@ -35,6 +36,7 @@ class Product extends Equatable {
     required this.rating,
     this.blockchainRootHash,
     this.processes = const [],
+    this.source = ProductSource.mongodb,
   });
 
   Product copyWith({
@@ -54,6 +56,7 @@ class Product extends Equatable {
     double? rating,
     String? blockchainRootHash,
     List<ProductProcess>? processes,
+    ProductSource? source,
   }) {
     return Product(
       id: id ?? this.id,
@@ -72,6 +75,7 @@ class Product extends Equatable {
       rating: rating ?? this.rating,
       blockchainRootHash: blockchainRootHash ?? this.blockchainRootHash,
       processes: processes ?? this.processes,
+      source: source ?? this.source,
     );
   }
 
@@ -94,7 +98,33 @@ class Product extends Equatable {
       rating,
       blockchainRootHash,
       processes,
+      source,
     ];
+  }
+}
+
+enum ProductSource {
+  mongodb,
+  openFoodFacts,
+}
+
+extension ProductSourceLabel on ProductSource {
+  String get label {
+    switch (this) {
+      case ProductSource.mongodb:
+        return 'Ethical Commerce App';
+      case ProductSource.openFoodFacts:
+        return 'Open Food Facts';
+    }
+  }
+
+  String get description {
+    switch (this) {
+      case ProductSource.mongodb:
+        return 'From our curated ethical database';
+      case ProductSource.openFoodFacts:
+        return 'From Open Food Facts database';
+    }
   }
 }
 

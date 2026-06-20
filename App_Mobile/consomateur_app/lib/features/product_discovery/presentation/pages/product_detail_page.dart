@@ -5,6 +5,7 @@ import 'package:consomateur_app/core/theme/app_theme.dart';
 import '../../domain/entities/product.dart';
 import '../../domain/repositories/product_repository.dart';
 import '../widgets/score_gauge.dart';
+import '../widgets/nutrition_card.dart';
 import 'package:consomateur_app/core/services/preference_service.dart';
 
 class ProductDetailPage extends StatefulWidget {
@@ -54,13 +55,29 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             foregroundColor: AppTheme.textPrimary,
             flexibleSpace: FlexibleSpaceBar(
               titlePadding: const EdgeInsetsDirectional.only(start: 16, bottom: 16),
-              title: Text(
-                widget.product.name,
-                style: GoogleFonts.plusJakartaSans(
-                  color: AppTheme.textPrimary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 17,
-                ),
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.product.name,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: AppTheme.textPrimary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 17,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Source: ${widget.product.source.label}',
+                    style: GoogleFonts.lato(
+                      fontSize: 12,
+                      color: AppTheme.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
               background: Container(
                 decoration: BoxDecoration(gradient: AppTheme.softGradient),
@@ -78,6 +95,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   const SizedBox(height: 18),
                   _buildCertificationsCard(),
                   const SizedBox(height: 24),
+                  if (widget.product.source == ProductSource.openFoodFacts)
+                    ..._buildOpenFoodFactsSection(),
                   _buildCompositionCard(),
                   const SizedBox(height: 24),
                   _buildProcessesCard(),
@@ -288,6 +307,32 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         ],
       ),
     );
+  }
+
+  List<Widget> _buildOpenFoodFactsSection() {
+    final offProduct = widget.product;
+    
+    // Try to cast to OpenFoodFactsProductModel to get nutrition data
+    try {
+      final offData = (offProduct as dynamic).nutritionData;
+      if (offData != null) {
+        return [
+          NutritionCard(
+            nutriments: offData.nutriments,
+            nutrientLevels: offData.nutrientLevels,
+            nutritionGrade: offData.nutritionGrade,
+            nutriscoreScore: offData.nutriscoreScore,
+            ecoscore: offData.ecoscore,
+            novaGroup: offData.novaGroup,
+            allergens: offData.allergens,
+          ),
+          const SizedBox(height: 24),
+        ];
+      }
+    } catch (_) {
+      // Not an OpenFoodFactsProductModel or no nutrition data
+    }
+    return [];
   }
 
   Widget _buildCompositionCard() {

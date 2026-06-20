@@ -28,18 +28,11 @@ class _SearchScreenState extends State<SearchScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final allProducts = await widget.productRepository.getAllProducts();
-      final filteredProducts = allProducts
-          .where(
-            (product) =>
-                product.name.toLowerCase().contains(query.toLowerCase()) ||
-                product.producer.name.toLowerCase().contains(query.toLowerCase()),
-          )
-          .toList();
+      final searchResults = await widget.productRepository.searchProducts(query);
 
       if (!mounted) return;
       setState(() {
-        _searchResults = filteredProducts;
+        _searchResults = searchResults;
         _isLoading = false;
       });
     } catch (e) {
