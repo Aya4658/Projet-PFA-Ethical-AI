@@ -183,6 +183,91 @@ app.post("/api/auth/register", async (req, res) => {
   }
 });
 
+app.post('/api/auth/social', async (req, res) => {
+  try {
+    const { provider, token, country } = req.body || {};
+    if (!provider || !token) {
+      return res.status(400).json({ message: 'provider and token are required' });
+    }
+
+    const normalizedProvider = String(provider).toLowerCase();
+    if (!['google', 'facebook'].includes(normalizedProvider)) {
+      return res.status(400).json({ message: 'Unsupported social provider' });
+    }
+
+    let socialEmail;
+    let socialName;
+
+    if (normalizedProvider === 'google') {
+      const verifyResponse = await fetch(
+        `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(token)}`,
+      );
+      if (!verifyResponse.ok) {
+        throw new Error('Invalid Google token');
+      }
+      const profile = await verifyResponse.json();
+      socialEmail = profile.email;
+      socialName = profile.name || profile.email?.split('@')[0] || 'Google User';
+      if (!socialEmail) {
+        throw new Error('Google token did not contain an email');
+      }
+    } else {
+      const verifyResponse = await fetch(
+        `https://graph.facebook.com/me?fields=id,name,email&access_token=${encodeURIComponent(token)}`,
+      );
+      if (!verifyResponse.ok) {
+        const errorText = await verifyResponse.text();
+        throw new Error(`Invalid Facebook token: ${errorText}`);
+      }
+      const profile = await verifyResponse.json();
+      socialEmail = profile.email;
+      socialName = profile.name || `Facebook User ${profile.id ?? ''}`;
+      if (!socialEmail) {
+        throw new Error('Facebook token did not contain an email');
+      }
+    }
+
+    const normalizedEmail = String(socialEmail).toLowerCase();
+    const normalizedName = String(socialName || (normalizedProvider === 'google' ? 'Google User' : 'Facebook User'));
+    let user = await usersCollection().findOne({ email: normalizedEmail });
+
+    if (!user) {
+      const highest = await usersCollection().find().sort({ id: -1 }).limit(1).toArray();
+      const nextId = highest.length > 0 ? Number(highest[0].id || 0) + 1 : 1;
+      const now = new Date().toISOString();
+      user = {
+        id: nextId,
+        name: normalizedName,
+        email: normalizedEmail,
+        country: String(country || 'Unknown'),
+        password: sha256(String(token)),
+        preferences: {
+          is_vegan: false,
+          is_organic_focused: true,
+          is_fair_trade_focused: true,
+          is_local_focused: true,
+          max_carbon_footprint: 7.0,
+        },
+        stats: {
+          total_scans: 0,
+          total_purchases: 0,
+          ethical_awareness_score: 50,
+          total_co2_saved_kg: 0.0,
+        },
+        favorites: [],
+        scan_history: [],
+        created_at: now,
+        updated_at: now,
+      };
+      await usersCollection().insertOne(user);
+    }
+
+    return res.json(mapUser(user));
+  } catch (error) {
+    return res.status(500).json({ message: `Social sign-in failed: ${error.message}` });
+  }
+});
+
 app.get("/api/users/:id", async (req, res) => {
   try {
     const id = parseNumericId(req.params.id);

@@ -8,12 +8,16 @@ class ProductTile extends StatelessWidget {
   final Product product;
   final VoidCallback? onTap;
   final Widget? trailing;
+  final bool isFavorite;
+  final VoidCallback? onFavoritePressed;
 
   const ProductTile({
     super.key,
     required this.product,
     this.onTap,
     this.trailing,
+    this.isFavorite = false,
+    this.onFavoritePressed,
   });
 
   @override
@@ -113,12 +117,22 @@ class ProductTile extends StatelessWidget {
                       ],
                     ),
                   ),
-                  trailing ??
-                      Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        size: 16,
-                        color: AppTheme.textSecondary.withValues(alpha: 0.6),
+                  if (onFavoritePressed != null)
+                    IconButton(
+                      onPressed: onFavoritePressed,
+                      icon: Icon(
+                        isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                        color: isFavorite ? Colors.red.shade400 : AppTheme.textSecondary,
                       ),
+                      tooltip: isFavorite ? 'Remove from wishlist' : 'Add to wishlist',
+                    )
+                  else
+                    trailing ??
+                        Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 16,
+                          color: AppTheme.textSecondary.withValues(alpha: 0.6),
+                        ),
                 ],
               ),
             ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_theme.dart';
@@ -192,6 +193,79 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       )
                     : const Text('Create Account'),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(child: Divider(color: Colors.grey[300])),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Text(
+                    'Or continue with',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: AppTheme.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                Expanded(child: Divider(color: Colors.grey[300])),
+              ],
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 52,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.grey[300]!),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  foregroundColor: Colors.black87,
+                  backgroundColor: Colors.white,
+                ),
+                icon: const Icon(Icons.g_mobiledata, color: Colors.black54),
+                label: const Text('Continue with Google'),
+                onPressed: _isLoading
+                    ? null
+                    : () async {
+                        if (_selectedCountry == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Please select your country first.')),
+                          );
+                          return;
+                        }
+                        setState(() => _isLoading = true);
+                        try {
+                          final googleSignIn = GoogleSignIn(
+                            scopes: ['email', 'profile'],
+                            serverClientId: 'YOUR_SERVER_CLIENT_ID.apps.googleusercontent.com',
+                          );
+                          final googleUser = await googleSignIn.signIn();
+                          if (googleUser == null) {
+                            return;
+                          }
+                          final googleAuth = await googleUser.authentication;
+                          final idToken = googleAuth.idToken;
+                          if (idToken == null) {
+                            throw Exception('Google token unavailable');
+                          }
+                          final authProvider = context.read<AuthProvider>();
+                          await authProvider.socialSignIn('google', idToken, country: _selectedCountry);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Signed up with Google successfully.')),
+                            );
+                            Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Google sign-up failed: ${e.toString()}')),
+                            );
+                          }
+                        } finally {
+                          if (mounted) setState(() => _isLoading = false);
+                        }
+                      },
               ),
             ),
             const SizedBox(height: 16),

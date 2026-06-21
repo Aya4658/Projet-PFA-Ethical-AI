@@ -5,6 +5,7 @@ import 'package:consomateur_app/core/theme/app_theme.dart';
 import 'package:consomateur_app/features/product_discovery/domain/repositories/product_repository.dart';
 import 'package:consomateur_app/features/product_discovery/presentation/pages/scanner_page.dart';
 import 'package:consomateur_app/features/user_profile/presentation/pages/settings_page.dart';
+import 'package:consomateur_app/features/chatbot/presentation/pages/chat_page.dart';
 import 'search_screen.dart';
 import 'wishlist_screen.dart';
 import 'scan_history_screen.dart';
@@ -25,6 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
     'Search',
     'Wishlist',
     'History',
+    'Chat',
     'Profile',
   ];
 
@@ -33,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
     'Find ethical products',
     'Your saved favorites',
     'Recently scanned items',
+    'Ask the AI assistant',
     'Your account & stats',
   ];
 
@@ -45,6 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
       SearchScreen(productRepository: productRepository),
       WishlistScreen(productRepository: productRepository),
       ScanHistoryScreen(productRepository: productRepository),
+      const ChatPage(),
       ProfileScreen(productRepository: productRepository),
     ];
 
@@ -135,6 +139,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icon(Icons.history_rounded),
                   selectedIcon: Icon(Icons.history_toggle_off_rounded),
                   label: 'History',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.chat_bubble_outline),
+                  selectedIcon: Icon(Icons.chat_bubble_rounded),
+                  label: 'Chat',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.person_outline_rounded),

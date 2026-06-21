@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 import 'package:consomateur_app/core/theme/app_theme.dart';
 import '../../domain/entities/product.dart';
 import '../../domain/repositories/product_repository.dart';
+import 'package:consomateur_app/features/user_management/presentation/providers/auth_provider.dart';
 import '../widgets/score_gauge.dart';
 import '../widgets/nutrition_card.dart';
 import 'package:consomateur_app/core/services/preference_service.dart';
@@ -141,22 +143,79 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             child: ScoreGauge(ethicalScore: widget.product.ethicalScore),
           ),
           const SizedBox(height: 16),
-          Text(
-            widget.product.category,
-            style: GoogleFonts.lato(
-              fontSize: 14,
-              color: Colors.grey[700],
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${widget.product.price.toStringAsFixed(2)} ${widget.product.currency}',
-            style: GoogleFonts.lato(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: Colors.grey[900],
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.product.category,
+                      style: GoogleFonts.lato(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${widget.product.price.toStringAsFixed(2)} ${widget.product.currency}',
+                      style: GoogleFonts.lato(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.grey[900],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Builder(
+                builder: (context) {
+                  final authProvider = context.watch<AuthProvider>();
+                  final isFavorite = authProvider.currentUser?.favorites.contains(widget.product.id) ?? false;
+                  final messenger = ScaffoldMessenger.of(context);
+
+                  return IconButton(
+                    icon: Icon(
+                      isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                      color: isFavorite ? Colors.red.shade400 : Colors.grey[600],
+                      size: 28,
+                    ),
+                    tooltip: isFavorite ? 'Remove from wishlist' : 'Add to wishlist',
+                    onPressed: () async {
+                      if (!authProvider.isAuthenticated) {
+                        messenger.showSnackBar(
+                          const SnackBar(content: Text('Please log in to manage your wishlist.')),
+                        );
+                        return;
+                      }
+
+                      try {
+                        if (isFavorite) {
+                          await authProvider.removeFromFavorites(widget.product.id);
+                          if (!mounted) return;
+                          messenger.showSnackBar(
+                            const SnackBar(content: Text('Removed from wishlist')),
+                          );
+                        } else {
+                          await authProvider.addToFavorites(widget.product.id);
+                          if (!mounted) return;
+                          messenger.showSnackBar(
+                            const SnackBar(content: Text('Added to wishlist')),
+                          );
+                        }
+                      } catch (e) {
+                        if (!mounted) return;
+                        messenger.showSnackBar(
+                          SnackBar(content: Text('Unable to update wishlist: $e')),
+                        );
+                      }
+                    },
+                  );
+                },
+              ),
+            ],
           ),
         ],
       ),

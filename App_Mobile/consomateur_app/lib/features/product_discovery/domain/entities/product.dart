@@ -112,7 +112,7 @@ extension ProductSourceLabel on ProductSource {
   String get label {
     switch (this) {
       case ProductSource.mongodb:
-        return 'Ethical Commerce App';
+        return 'Ethico';
       case ProductSource.openFoodFacts:
         return 'Open Food Facts';
     }

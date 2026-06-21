@@ -70,6 +70,24 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> socialSignIn(String provider, String token, {String? country}) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      _currentUser = await userRepository.socialSignIn(provider, token, country: country);
+      _error = null;
+    } catch (e) {
+      _error = e.toString();
+      _currentUser = null;
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> updatePreferences(UserPreferences preferences) async {
     if (_currentUser == null) return;
 

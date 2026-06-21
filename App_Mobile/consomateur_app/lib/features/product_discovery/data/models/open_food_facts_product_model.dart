@@ -24,13 +24,17 @@ class OpenFoodFactsNutritionData {
 
   factory OpenFoodFactsNutritionData.fromJson(Map<String, dynamic> json) {
     return OpenFoodFactsNutritionData(
-      nutriments: json['nutriments'] as Map<String, dynamic>?,
-      nutrientLevels: json['nutrient_levels'] as Map<String, dynamic>?,
-      nutritionGrade: json['nutrition_grades'] as String?,
-      nutriscoreScore: json['nutriscore_score'] as int?,
-      ecoscore: json['ecoscore_grade'] as String?,
-      novaGroup: json['nova_group'] as int?,
-      allergens: json['allergens'] as String?,
+      nutriments: json['nutriments'] is Map<String, dynamic>
+          ? json['nutriments'] as Map<String, dynamic>
+          : null,
+      nutrientLevels: json['nutrient_levels'] is Map<String, dynamic>
+          ? json['nutrient_levels'] as Map<String, dynamic>
+          : null,
+      nutritionGrade: json['nutrition_grades']?.toString(),
+      nutriscoreScore: (json['nutriscore_score'] as num?)?.toInt(),
+      ecoscore: json['ecoscore_grade']?.toString(),
+      novaGroup: (json['nova_group'] as num?)?.toInt(),
+      allergens: json['allergens']?.toString(),
       rawJson: json,
     );
   }
@@ -64,9 +68,9 @@ class OpenFoodFactsProductModel extends Product {
     final productJson = json;
     final ingredientList = _parseIngredients(productJson['ingredients'] as List<dynamic>?);
     final labels = _parseLabels(productJson);
-    final name = productJson['product_name'] as String? ??
-        productJson['generic_name'] as String? ??
-        productJson['product_name_fr'] as String? ??
+    final name = productJson['product_name']?.toString() ??
+        productJson['generic_name']?.toString() ??
+        productJson['product_name_fr']?.toString() ??
         'Unknown product';
 
     final ethicalScore = _calculateEthicalScore(productJson);
@@ -77,13 +81,13 @@ class OpenFoodFactsProductModel extends Product {
       category: _parseCategory(productJson),
       price: 0.0,
       currency: 'EUR',
-      originCountry: productJson['countries'] as String? ?? '',
+      originCountry: productJson['countries']?.toString() ?? '',
       fairTradeCertified: false,
       ethicalScore: ethicalScore,
       carbonFootprintKg: 0.0,
       composition: ingredientList,
       producer: ProducerInfo(
-        name: productJson['brands'] as String? ?? 'Open Food Facts',
+        name: productJson['brands']?.toString() ?? 'Open Food Facts',
         type: 'OpenFoodFacts',
         workersCount: 0,
         averageSalaryUsd: 0,
@@ -193,8 +197,9 @@ class OpenFoodFactsProductModel extends Product {
           .map((label) => label.toString().replaceFirst('en:', '').replaceFirst('fr:', '')));
     }
 
-    if (labels.isEmpty && productJson['labels'] is String) {
-      labels.addAll((productJson['labels'] as String)
+    if (labels.isEmpty && productJson['labels'] != null) {
+      labels.addAll(productJson['labels']
+          .toString()
           .split(',')
           .map((label) => label.trim())
           .where((label) => label.isNotEmpty));
