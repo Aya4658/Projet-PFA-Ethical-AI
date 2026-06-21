@@ -95,14 +95,67 @@ export function EditModal({ title, fields, values, onChange, onSave, onCancel })
 }
 
 // ─── PROFILE MODAL ────────────────────────────────────────────────
-const ADMIN_INFO = {
-  prenom: "Mohamed", nom: "Principal", email: "admin@ethicchain.ma",
-  role: "Super Administrateur", dateCreation: "01/01/2024",
-  derniereConnexion: "26/04/2026 09:14", telephone: "+212 600 000 001",
-  statut: "Actif", id: "ADM-0001", departement: "Direction Technique",
-};
+export function ProfileModal({ onClose, adminInfo, onProfileUpdated }) {
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({
+    prenom:     adminInfo?.prenom     || '',
+    nom:        adminInfo?.nom        || '',
+    telephone:  adminInfo?.telephone  || '',
+    departement:adminInfo?.departement|| '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState(null);
 
-export function ProfileModal({ onClose }) {
+  const token = localStorage.getItem("adminToken");
+
+  function formatDate(d) {
+    if (!d) return '—';
+    return new Date(d).toLocaleString('fr-FR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+  }
+
+  function initiales() {
+    const p = adminInfo?.prenom?.[0] || '';
+    const n = adminInfo?.nom?.[0]    || '';
+    if (p || n) return (p + n).toUpperCase();
+    return (adminInfo?.email?.[0] || 'A').toUpperCase();
+  }
+
+  function fullName() {
+    const p = adminInfo?.prenom || '';
+    const n = adminInfo?.nom    || '';
+    if (p || n) return `${p} ${n}`.trim();
+    return adminInfo?.email || 'Admin';
+  }
+
+  function shortId(id) {
+    if (!id) return '—';
+    return 'ADM-' + String(id).slice(-6).toUpperCase();
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    setMsg(null);
+    try {
+      const res = await fetch('http://localhost:5000/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setMsg({ type: 'success', text: 'Profil mis à jour !' });
+      setEditing(false);
+      if (onProfileUpdated) onProfileUpdated(data);
+    } catch (err) {
+      setMsg({ type: 'error', text: err.message });
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal-card">
@@ -111,33 +164,73 @@ export function ProfileModal({ onClose }) {
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
         <div className="modal-body">
-          <div className="profile-avatar-big">MP</div>
+          <div className="profile-avatar-big">{initiales()}</div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>{ADMIN_INFO.prenom} {ADMIN_INFO.nom}</div>
-            <div style={{ fontSize: 12, color: "var(--primary)", fontWeight: 600, marginTop: 3 }}>{ADMIN_INFO.role}</div>
-            <Badge s={ADMIN_INFO.statut} />
+            <div style={{ fontSize: 16, fontWeight: 700 }}>{fullName()}</div>
+            <div style={{ fontSize: 12, color: "var(--primary)", fontWeight: 600, marginTop: 3 }}>
+              {adminInfo?.role || 'Super Administrateur'}
+            </div>
+            <Badge s="Actif" />
           </div>
           <div className="divider" />
-          <div className="profile-grid">
-            {[
-              { label: "ID Admin",           value: ADMIN_INFO.id },
-              { label: "Département",        value: ADMIN_INFO.departement },
-              { label: "Email",              value: ADMIN_INFO.email },
-              { label: "Téléphone",          value: ADMIN_INFO.telephone },
-              { label: "Date de création",   value: ADMIN_INFO.dateCreation },
-              { label: "Dernière connexion", value: ADMIN_INFO.derniereConnexion },
-            ].map(f => (
-              <div className="profile-field" key={f.label}>
-                <span className="profile-field-label">{f.label}</span>
-                <span className="profile-field-value">{f.value}</span>
+
+          {!editing ? (
+            <>
+              <div className="profile-grid">
+                {[
+                  { label: "ID Admin",           value: shortId(adminInfo?._id) },
+                  { label: "Département",        value: adminInfo?.departement || '—' },
+                  { label: "Email",              value: adminInfo?.email || '—' },
+                  { label: "Téléphone",          value: adminInfo?.telephone || '—' },
+                  { label: "Date de création",   value: formatDate(adminInfo?.createdAt) },
+                  { label: "Dernière connexion", value: formatDate(adminInfo?.lastLogin) },
+                ].map(f => (
+                  <div className="profile-field" key={f.label}>
+                    <span className="profile-field-label">{f.label}</span>
+                    <span className="profile-field-value">{f.value}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="divider" />
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <button className="btn btn-secondary" onClick={onClose}>Fermer</button>
-            <button className="btn btn-primary" onClick={onClose}>✏️ Modifier profil</button>
-          </div>
+              {msg && (
+                <div className={`login-msg ${msg.type}`} style={{ marginTop: 8 }}>{msg.text}</div>
+              )}
+              <div className="divider" />
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button className="btn btn-secondary" onClick={onClose}>Fermer</button>
+                <button className="btn btn-primary" onClick={() => { setEditing(true); setMsg(null); }}>✏️ Modifier profil</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="edit-grid">
+                {[
+                  { key: 'prenom',      label: 'Prénom' },
+                  { key: 'nom',         label: 'Nom' },
+                  { key: 'telephone',   label: 'Téléphone' },
+                  { key: 'departement', label: 'Département' },
+                ].map(f => (
+                  <div className="edit-field" key={f.key}>
+                    <label>{f.label}</label>
+                    <input
+                      type="text"
+                      value={form[f.key]}
+                      onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+              </div>
+              {msg && (
+                <div className={`login-msg ${msg.type}`} style={{ marginTop: 8 }}>{msg.text}</div>
+              )}
+              <div className="divider" />
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button className="btn btn-secondary" onClick={() => { setEditing(false); setMsg(null); }}>Annuler</button>
+                <button className="btn btn-success" onClick={handleSave} disabled={saving}>
+                  {saving ? 'Sauvegarde…' : '💾 Sauvegarder'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

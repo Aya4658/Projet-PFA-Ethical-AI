@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import "./App.css";
 
+import Login from "./components/Login/Login.jsx";
 import { ToastContainer, ProfileModal, useToast } from "./components/shared.jsx";
 import Home              from "./components/Home/Home.jsx";
 import GererFournisseurs from "./components/GererFournisseurs/GererFournisseurs.jsx";
@@ -58,23 +59,44 @@ const TITLES = {
 
 // ─── APP ──────────────────────────────────────────────────────────
 export default function App() {
-  const [page, setPage]           = useState("home");
-  const [tab,  setTab]            = useState("fournisseur");
+  // ── tous les hooks en premier, AVANT tout return conditionnel ──
+  const [token,      setToken]      = useState(() => localStorage.getItem("adminToken"));
+  const [adminEmail, setAdminEmail] = useState(() => localStorage.getItem("adminEmail") || "");
+  const [adminInfo,  setAdminInfo]  = useState(null);
+
+  const [page, setPage]               = useState("home");
+  const [tab,  setTab]                = useState("fournisseur");
   const [showProfile, setShowProfile] = useState(false);
 
   const [fournisseurs, setFournisseurs] = useState(INIT.fournisseurs);
   const [produits,     setProduits]     = useState(INIT.produits);
   const [certifs,      setCertifs]      = useState(INIT.certifs);
   const [utilisateurs, setUtilisateurs] = useState(INIT.utilisateurs);
+  const [avis,         setAvis]         = useState(INIT.avis);
+  const [signalements, setSignalements] = useState(INIT.signalements);
+
+  const { toasts, showToast } = useToast();
 
   useEffect(() => {
+    if (!token) return;
+    fetch("http://localhost:5000/api/auth/profile", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(data => { if (data._id) setAdminInfo(data); })
+      .catch(() => {});
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
     fetch("http://localhost:5000/api/users")
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setUtilisateurs(data); })
       .catch(() => {});
-  }, []);
+  }, [token]);
 
   useEffect(() => {
+    if (!token) return;
     fetch("http://localhost:5000/api/producers")
       .then(r => r.json())
       .then(data => {
@@ -93,9 +115,10 @@ export default function App() {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [token]);
 
   useEffect(() => {
+    if (!token) return;
     fetch("http://localhost:5000/api/products")
       .then(r => r.json())
       .then(data => {
@@ -109,14 +132,28 @@ export default function App() {
         }
       })
       .catch(() => {});
-  }, []);
-  const [avis,         setAvis]         = useState(INIT.avis);
-  const [signalements, setSignalements] = useState(INIT.signalements);
+  }, [token]);
 
-  const { toasts, showToast } = useToast();
+  // ── fonctions auth ──
+  function handleLogin(tok, email) {
+    setToken(tok);
+    setAdminEmail(email);
+  }
 
+  function handleLogout() {
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("adminEmail");
+    setToken(null);
+    setAdminEmail("");
+  }
+
+  // ── return conditionnel APRÈS tous les hooks ──
+  if (!token) {
+    return <Login onLogin={handleLogin} />;
+  }
+
+  // ── helpers dashboard ──
   const navigate = (id, section) => { setPage(id); setTab(section || "fournisseur"); };
-
   const cur = NAV.find(n => n.id === page);
 
   function PageContent() {
@@ -146,7 +183,6 @@ export default function App() {
           <div className="sidebar-logo-sub">Commerce équitable &amp; blockchain</div>
         </div>
 
-        {/* Home link */}
         <div
           className={`sidebar-item ${page === "home" ? "active" : ""}`}
           onClick={() => navigate("home")}
@@ -177,11 +213,21 @@ export default function App() {
         ))}
 
         <div className="sidebar-profile" onClick={() => setShowProfile(true)}>
-          <div className="s-avatar">MP</div>
-          <div>
-            <div className="sidebar-profile-name">Mohamed P.</div>
+          <div className="s-avatar">{adminEmail ? adminEmail[0].toUpperCase() : "A"}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="sidebar-profile-name" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {adminEmail || "Admin"}
+            </div>
             <div className="sidebar-profile-role">Super Admin · voir profil →</div>
           </div>
+        </div>
+
+        <div
+          className="sidebar-item"
+          style={{ color: "#ef9a9a", borderTop: "1px solid rgba(255,255,255,0.08)" }}
+          onClick={handleLogout}
+        >
+          <span className="sidebar-item-icon">🚪</span>Déconnexion
         </div>
       </aside>
 
@@ -197,12 +243,10 @@ export default function App() {
             </div>
           </div>
           <div className="topbar-right">
-            <div className="topbar-btn" style={{ padding: "0 10px", fontSize: 16 }}>
-              🔔<div className="notif-dot" />
-            </div>
-            <div className="topbar-btn" style={{ padding: "0 10px", fontSize: 16 }}>⚙️</div>
             <div className="topbar-btn" onClick={() => setShowProfile(true)}>
-              <div className="s-avatar" style={{ width: 26, height: 26, fontSize: 11, flexShrink: 0 }}>MP</div>
+              <div className="s-avatar" style={{ width: 26, height: 26, fontSize: 11, flexShrink: 0 }}>
+                {adminEmail ? adminEmail[0].toUpperCase() : "A"}
+              </div>
               Mon compte
             </div>
           </div>
@@ -233,7 +277,13 @@ export default function App() {
         </div>
       </div>
 
-      {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
+      {showProfile && (
+        <ProfileModal
+          onClose={() => setShowProfile(false)}
+          adminInfo={adminInfo}
+          onProfileUpdated={updated => setAdminInfo(updated)}
+        />
+      )}
       <ToastContainer toasts={toasts} />
     </div>
   );
