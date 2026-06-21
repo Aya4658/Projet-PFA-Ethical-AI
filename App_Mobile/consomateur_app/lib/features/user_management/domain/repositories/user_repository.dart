@@ -7,6 +7,9 @@ abstract class UserRepository {
   /// Creates a new user account
   Future<User> createAccount(String name, String email, String password, String country);
 
+  /// Signs in with a social provider, creating a new account if needed.
+  Future<User> socialSignIn(String provider, String token, {String? country});
+
   /// Gets the current logged in user
   Future<User?> getCurrentUser();
 

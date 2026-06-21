@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:consomateur_app/core/theme/app_theme.dart';
+import 'package:consomateur_app/core/widgets/app_empty_state.dart';
+import 'package:consomateur_app/core/widgets/product_tile.dart';
 import 'package:consomateur_app/features/product_discovery/domain/entities/product.dart';
 import 'package:consomateur_app/features/product_discovery/domain/repositories/product_repository.dart';
+import 'package:consomateur_app/features/user_management/presentation/providers/auth_provider.dart';
 
 class SearchScreen extends StatefulWidget {
   final ProductRepository productRepository;
@@ -17,28 +22,28 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _isLoading = false;
 
   void _performSearch(String query) async {
-    if (query.isEmpty) {
-      setState(() => _searchResults = []);
+    final trimmedQuery = query.trim();
+    if (trimmedQuery.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _searchResults = [];
+        _isLoading = false;
+      });
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      // TODO: Implement actual search in repository
-      // For now, we'll search by product name in the database
-      // This would need to be implemented in the repository
-      final allProducts = await widget.productRepository.getAllProducts();
-      final filteredProducts = allProducts.where((product) =>
-        product.name.toLowerCase().contains(query.toLowerCase()) ||
-        product.producer.name.toLowerCase().contains(query.toLowerCase())
-      ).toList();
+      final searchResults = await widget.productRepository.searchProducts(trimmedQuery);
 
+      if (!mounted) return;
       setState(() {
-        _searchResults = filteredProducts;
+        _searchResults = searchResults;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Search failed: ${e.toString()}')),
@@ -54,96 +59,98 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            floating: true,
-            title: const Text('Search Products'),
-            backgroundColor: Theme.of(context).primaryColor,
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+          child: TextField(
+            controller: _searchController,
+            onChanged: _performSearch,
+            decoration: InputDecoration(
+              hintText: 'Search products, brands...',
+              prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.primaryColor),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () {
+                        _searchController.clear();
+                        _performSearch('');
+                      },
+                    )
+                  : null,
+              filled: true,
+              fillColor: AppTheme.cardColor,
+            ),
           ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search by product name or brand...',
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                            _performSearch('');
+        ),
+        Expanded(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _searchResults.isEmpty
+                  ? AppEmptyState(
+                      icon: _searchController.text.isEmpty
+                          ? Icons.manage_search_rounded
+                          : Icons.search_off_rounded,
+                      title: _searchController.text.isEmpty
+                          ? 'Discover ethical products'
+                          : 'No products found',
+                      subtitle: _searchController.text.isEmpty
+                          ? 'Type a product name or brand to start searching'
+                          : 'Try a different keyword or check your spelling',
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      itemCount: _searchResults.length,
+                      itemBuilder: (context, index) {
+                        final product = _searchResults[index];
+                        final authProvider = context.watch<AuthProvider>();
+                        final isFavorite = authProvider.currentUser?.favorites.contains(product.id) ?? false;
+
+                        return ProductTile(
+                          product: product,
+                          onTap: () {
+                            Navigator.pushNamed(
+                              context,
+                              '/product-detail',
+                              arguments: product,
+                            );
                           },
-                        )
-                      : null,
-                ),
-                onChanged: _performSearch,
-              ),
-            ),
-          ),
-          if (_isLoading)
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-            )
-          else if (_searchResults.isEmpty)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Center(
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.search_off,
-                        size: 64,
-                        color: Colors.grey[400],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        _searchController.text.isEmpty
-                            ? 'Start typing to search'
-                            : 'No products found',
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            )
-          else
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final product = _searchResults[index];
-                  return ListTile(
-                    leading: const Icon(Icons.shopping_bag),
-                    title: Text(product.name),
-                    subtitle: Text('${product.producer.name} - \$${product.price.toStringAsFixed(2)}'),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                    onTap: () {
-                      // TODO: Navigate to product details
-                      Navigator.pushNamed(
-                        context,
-                        '/product-detail',
-                        arguments: product,
-                      );
-                    },
-                  );
-                },
-                childCount: _searchResults.length,
-              ),
-            ),
-        ],
-      ),
+                          isFavorite: isFavorite,
+                          onFavoritePressed: () async {
+                            final messenger = ScaffoldMessenger.of(context);
+                            if (!authProvider.isAuthenticated) {
+                              messenger.showSnackBar(
+                                const SnackBar(content: Text('Please log in to add items to your wishlist.')),
+                              );
+                              return;
+                            }
+
+                            try {
+                              if (isFavorite) {
+                                await authProvider.removeFromFavorites(product.id);
+                                if (!mounted) return;
+                                messenger.showSnackBar(
+                                  const SnackBar(content: Text('Removed from wishlist')),
+                                );
+                              } else {
+                                await authProvider.addToFavorites(product.id);
+                                if (!mounted) return;
+                                messenger.showSnackBar(
+                                  const SnackBar(content: Text('Added to wishlist')),
+                                );
+                              }
+                            } catch (e) {
+                              if (!mounted) return;
+                              messenger.showSnackBar(
+                                SnackBar(content: Text('Unable to update wishlist: $e')),
+                              );
+                            }
+                          },
+                        );
+                      },
+                    ),
+        ),
+      ],
     );
   }
 }

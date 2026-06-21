@@ -1,6 +1,6 @@
 # consomateur_app
 
-Flutter client for the Ethical Commerce consumer experience.
+Flutter client for the Ethico consumer experience.
 
 ## Getting Started
 

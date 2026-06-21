@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/theme/app_theme.dart';
+import 'features/product_discovery/data/datasources/open_food_facts_remote_data_source.dart';
 import 'features/product_discovery/data/datasources/product_remote_data_source.dart';
 import 'features/product_discovery/data/repositories/product_repository_impl.dart';
 import 'features/product_discovery/domain/entities/product.dart';
@@ -50,7 +51,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     // Initialize repositories
     final ProductRemoteDataSource productRemoteDataSource = ProductRemoteDataSourceImpl();
-    final ProductRepository productRepository = ProductRepositoryImpl(productRemoteDataSource);
+    final OpenFoodFactsRemoteDataSource openFoodFactsRemoteDataSource = OpenFoodFactsRemoteDataSourceImpl();
+    final ProductRepository productRepository = ProductRepositoryImpl(
+      productRemoteDataSource,
+      openFoodFactsRemoteDataSource,
+    );
 
     final UserRemoteDataSource userRemoteDataSource = UserRemoteDataSourceImpl();
     final UserRepository userRepository = UserRepositoryImpl(
@@ -66,7 +71,7 @@ class MyApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
-        title: 'Ethical Commerce App',
+        title: 'Ethico',
         theme: AppTheme.light,
         initialRoute: '/',
         onGenerateRoute: (settings) {
@@ -111,9 +116,28 @@ class AuthWrapper extends StatelessWidget {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         if (authProvider.isLoading) {
-          return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
+          return Scaffold(
+            body: Container(
+              decoration: BoxDecoration(gradient: AppTheme.primaryGradient),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.15),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                      ),
+                      child: const Icon(Icons.eco_rounded, color: Colors.white, size: 36),
+                    ),
+                    const SizedBox(height: 24),
+                    const CircularProgressIndicator(color: Colors.white),
+                  ],
+                ),
+              ),
             ),
           );
         }

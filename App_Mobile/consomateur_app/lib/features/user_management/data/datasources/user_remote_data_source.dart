@@ -8,6 +8,7 @@ import '../models/user_model.dart';
 abstract class UserRemoteDataSource {
   Future<UserModel> login(String email, String password);
   Future<UserModel> createAccount(String name, String email, String password, String country);
+  Future<UserModel> socialSignIn(String provider, String token, {String? country});
   Future<UserModel?> getCurrentUser(String userId);
   Future<void> updatePreferences(String userId, UserPreferences preferences);
   Future<void> addToFavorites(String userId, String productId);
@@ -60,6 +61,25 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
 
     if (response.statusCode != 201) {
       throw _apiException(response, 'Failed to create account');
+    }
+
+    return UserModel.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  @override
+  Future<UserModel> socialSignIn(String provider, String token, {String? country}) async {
+    final response = await http.post(
+      _uri('/auth/social'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'provider': provider,
+        'token': token,
+        if (country != null) 'country': country,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw _apiException(response, 'Social sign-in failed');
     }
 
     return UserModel.fromJson(jsonDecode(response.body) as Map<String, dynamic>);

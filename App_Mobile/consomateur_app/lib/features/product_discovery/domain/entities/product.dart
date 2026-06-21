@@ -15,6 +15,9 @@ class Product extends Equatable {
   final List<String> labels;
   final int stock;
   final double rating;
+  final String? blockchainRootHash;
+  final List<ProductProcess> processes;
+  final ProductSource source;
 
   const Product({
     required this.id,
@@ -31,6 +34,9 @@ class Product extends Equatable {
     required this.labels,
     required this.stock,
     required this.rating,
+    this.blockchainRootHash,
+    this.processes = const [],
+    this.source = ProductSource.mongodb,
   });
 
   Product copyWith({
@@ -48,6 +54,9 @@ class Product extends Equatable {
     List<String>? labels,
     int? stock,
     double? rating,
+    String? blockchainRootHash,
+    List<ProductProcess>? processes,
+    ProductSource? source,
   }) {
     return Product(
       id: id ?? this.id,
@@ -64,6 +73,9 @@ class Product extends Equatable {
       labels: labels ?? this.labels,
       stock: stock ?? this.stock,
       rating: rating ?? this.rating,
+      blockchainRootHash: blockchainRootHash ?? this.blockchainRootHash,
+      processes: processes ?? this.processes,
+      source: source ?? this.source,
     );
   }
 
@@ -84,19 +96,47 @@ class Product extends Equatable {
       labels,
       stock,
       rating,
+      blockchainRootHash,
+      processes,
+      source,
     ];
   }
 }
 
+enum ProductSource {
+  mongodb,
+  openFoodFacts,
+}
+
+extension ProductSourceLabel on ProductSource {
+  String get label {
+    switch (this) {
+      case ProductSource.mongodb:
+        return 'Ethico';
+      case ProductSource.openFoodFacts:
+        return 'Open Food Facts';
+    }
+  }
+
+  String get description {
+    switch (this) {
+      case ProductSource.mongodb:
+        return 'From our curated ethical database';
+      case ProductSource.openFoodFacts:
+        return 'From Open Food Facts database';
+    }
+  }
+}
+
 class ProductComposition extends Equatable {
-  final String material;
+  final String ingredient;
   final int percentage;
   final String origin;
   final bool isRecycled;
   final bool isOrganic;
 
   const ProductComposition({
-    required this.material,
+    required this.ingredient,
     required this.percentage,
     required this.origin,
     required this.isRecycled,
@@ -105,8 +145,23 @@ class ProductComposition extends Equatable {
 
   @override
   List<Object?> get props {
-    return [material, percentage, origin, isRecycled, isOrganic];
+    return [ingredient, percentage, origin, isRecycled, isOrganic];
   }
+}
+
+class ProductProcess extends Equatable {
+  final int stepNumber;
+  final String process;
+  final String previousHash;
+
+  const ProductProcess({
+    required this.stepNumber,
+    required this.process,
+    required this.previousHash,
+  });
+
+  @override
+  List<Object?> get props => [stepNumber, process, previousHash];
 }
 
 class ProducerInfo extends Equatable {

@@ -30,6 +30,13 @@ class UserRepositoryImpl implements UserRepository {
   }
 
   @override
+  Future<User> socialSignIn(String provider, String token, {String? country}) async {
+    final userModel = await remoteDataSource.socialSignIn(provider, token, country: country);
+    await sharedPreferences.setString(_currentUserIdKey, userModel.id);
+    return userModel;
+  }
+
+  @override
   Future<User?> getCurrentUser() async {
     final userId = sharedPreferences.getString(_currentUserIdKey);
     if (userId != null) {
