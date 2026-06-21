@@ -14,16 +14,8 @@ import Statistiques      from "./components/Statistiques/Statistiques.jsx";
 
 // ─── INITIAL DATA ─────────────────────────────────────────────────
 const INIT = {
-  fournisseurs: [
-    { id: 1, nom: "Société Alpha", statut: "Actif",    date: "01/03/2026" },
-    { id: 2, nom: "MediaBeta",     statut: "Attente",  date: "10/04/2026" },
-    { id: 3, nom: "TechGamma",     statut: "Suspendu", date: "15/02/2026" },
-  ],
-  produits: [
-    { id: 1, nom: "Câble HDMI 4K",  fournisseur: "TechGamma",  statut: "Attente"  },
-    { id: 2, nom: "Chaise Ergo Z5", fournisseur: "Sté Alpha",  statut: "En revue" },
-    { id: 3, nom: "Masque N95",     fournisseur: "MediaBeta",  statut: "Attente"  },
-  ],
+  fournisseurs: [],
+  produits: [],
   certifs: [
     { id: 1, nom: "ISO 9001",    fournisseur: "Sté Alpha",  statut: "Attente" },
     { id: 2, nom: "CE Marquage", fournisseur: "MediaBeta",  statut: "Expiré"  },
@@ -79,6 +71,43 @@ export default function App() {
     fetch("http://localhost:5000/api/users")
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setUtilisateurs(data); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch("http://localhost:5000/api/producers")
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setFournisseurs(data.map(f => ({
+            id:       f._id,
+            nom:      f.name || "Sans nom",
+            type:     f.type || "",
+            location: f.location || "",
+            email:    f.contact_email || "",
+            score:    f.sustainability_score ?? "",
+            workers:  f.workers_count ?? "",
+            statut:   f.statut || "Actif",
+            date:     f.date || "",
+          })));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch("http://localhost:5000/api/products")
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setProduits(data.map(p => ({
+            id:          p._id,
+            nom:         p.name || p.nom || "Sans nom",
+            fournisseur: p.producer_id ? String(p.producer_id) : "—",
+            statut:      p.statut || "Attente",
+          })));
+        }
+      })
       .catch(() => {});
   }, []);
   const [avis,         setAvis]         = useState(INIT.avis);

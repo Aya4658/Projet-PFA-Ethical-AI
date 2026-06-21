@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Badge, useCRUD, EditModal, ConfirmDialog } from "../shared.jsx";
 import "./Produits.css";
 
+const API = "http://localhost:5000/api/products";
+
 const FIELDS = [
   { key: "nom",         label: "Nom du produit" },
-  { key: "fournisseur", label: "Fournisseur" },
+  { key: "fournisseur", label: "Fournisseur (ID)" },
   { key: "statut",      label: "Statut", type: "select", options: ["Attente", "En revue", "Valide", "Suspendu"] },
 ];
 
@@ -15,12 +17,64 @@ export default function Produits({ data, setData, showToast }) {
 
   const filtered = data.filter(p => p.nom.toLowerCase().includes(recherche.toLowerCase()));
 
-  const handleAjouter = () => {
-    const n = { id: Date.now(), nom: "Nouveau produit", fournisseur: "—", statut: "Attente" };
-    setData(prev => [...prev, n]);
-    crud.setSelected(n.id);
-    crud.openEdit(n, { nom: n.nom, fournisseur: n.fournisseur, statut: n.statut });
-    showToast("success", "➕", "Nouveau produit — remplissez les champs");
+  const handleStatut = async (newStatut, msg) => {
+    if (!crud.sel) return;
+    try {
+      await fetch(`${API}/${crud.sel.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ statut: newStatut }),
+      });
+      crud.updateField(crud.sel.id, "statut", newStatut, msg);
+    } catch {
+      showToast("danger", "❌", "Erreur de connexion au serveur");
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      await fetch(`${API}/${crud.editItem.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name:        crud.editVals.nom,
+          producer_id: crud.editVals.fournisseur,
+          statut:      crud.editVals.statut,
+        }),
+      });
+      crud.saveEdit();
+    } catch {
+      showToast("danger", "❌", "Erreur de connexion au serveur");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!crud.confirmId) return;
+    try {
+      await fetch(`${API}/${crud.confirmId}`, { method: "DELETE" });
+      crud.confirmDelete();
+    } catch {
+      showToast("danger", "❌", "Erreur de connexion au serveur");
+    }
+  };
+
+  const handleAjouter = async () => {
+    const body = { name: "Nouveau produit", statut: "Attente" };
+    try {
+      const res = await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const created = await res.json();
+      const n = { id: created._id, nom: created.name, fournisseur: "—", statut: "Attente" };
+      setData(prev => [...prev, n]);
+      crud.setSelected(n.id);
+      crud.openEdit(n, { nom: n.nom, fournisseur: n.fournisseur, statut: n.statut });
+      showToast("success", "➕", "Nouveau produit — remplissez les champs");
+    } catch {
+      showToast("danger", "❌", "Erreur de connexion au serveur");
+    }
   };
 
   return (
@@ -79,8 +133,8 @@ export default function Produits({ data, setData, showToast }) {
               />
             </div>
             <div className="btn-row">
-              <button className="btn btn-success"   disabled={!crud.sel} onClick={() => crud.updateField(crud.sel.id, "statut", "Valide",    `${crud.sel.nom} validé`)}>✅ Valider</button>
-              <button className="btn btn-danger"    disabled={!crud.sel} onClick={() => crud.updateField(crud.sel.id, "statut", "Suspendu", `${crud.sel.nom} refusé`)}>❌ Refuser</button>
+              <button className="btn btn-success"   disabled={!crud.sel} onClick={() => handleStatut("Valide",    `${crud.sel.nom} validé`)}>✅ Valider</button>
+              <button className="btn btn-danger"    disabled={!crud.sel} onClick={() => handleStatut("Suspendu", `${crud.sel.nom} refusé`)}>❌ Refuser</button>
               <button className="btn btn-secondary" disabled={!crud.sel} onClick={() => crud.openEdit(crud.sel)}>✏️ Modifier</button>
               <button className="btn btn-danger"    disabled={!crud.sel} onClick={() => crud.openConfirm(crud.sel.id)}>🗑️ Supprimer</button>
             </div>
@@ -100,10 +154,10 @@ export default function Produits({ data, setData, showToast }) {
       </div>
 
       {crud.editItem && (
-        <EditModal title={`Modifier — ${crud.editItem.nom}`} fields={FIELDS} values={crud.editVals} onChange={crud.onChange} onSave={() => crud.saveEdit()} onCancel={crud.closeEdit} />
+        <EditModal title={`Modifier — ${crud.editItem.nom}`} fields={FIELDS} values={crud.editVals} onChange={crud.onChange} onSave={handleSaveEdit} onCancel={crud.closeEdit} />
       )}
       {crud.confirmId && (
-        <ConfirmDialog itemName={crud.confirmItem?.nom} onConfirm={crud.confirmDelete} onCancel={crud.closeConfirm} />
+        <ConfirmDialog itemName={crud.confirmItem?.nom} onConfirm={handleDelete} onCancel={crud.closeConfirm} />
       )}
     </>
   );

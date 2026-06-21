@@ -2,14 +2,18 @@ import { useState } from "react";
 import { Badge, useCRUD, EditModal, ConfirmDialog } from "../shared.jsx";
 import "./GererFournisseurs.css";
 
+const API = "http://localhost:5000/api/producers";
+
 const FIELDS = [
-  { key: "nom",    label: "Nom du fournisseur" },
-  { key: "statut", label: "Statut", type: "select", options: ["Actif", "Attente", "Suspendu"] },
-  { key: "date",   label: "Date inscription" },
+  { key: "nom",      label: "Nom du fournisseur" },
+  { key: "type",     label: "Type", type: "select", options: ["PME", "Grande entreprise", "Coopérative", "Artisan"] },
+  { key: "location", label: "Pays / Localisation" },
+  { key: "email",    label: "Email de contact" },
+  { key: "statut",   label: "Statut", type: "select", options: ["Actif", "Attente", "Suspendu"] },
 ];
 
 export default function GererFournisseurs({ data, setData, showToast }) {
-  const [recherche, setRecherche] = useState("");
+  const [recherche, setRecherche]     = useState("");
   const [filtreStatut, setFiltreStatut] = useState("Tous");
   const crud = useCRUD(data, setData, showToast, f => f.nom);
 
@@ -17,6 +21,49 @@ export default function GererFournisseurs({ data, setData, showToast }) {
     f.nom.toLowerCase().includes(recherche.toLowerCase()) &&
     (filtreStatut === "Tous" || f.statut === filtreStatut)
   );
+
+  const handleStatut = async (newStatut, msg) => {
+    if (!crud.sel) return;
+    try {
+      await fetch(`${API}/${crud.sel.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ statut: newStatut }),
+      });
+      crud.updateField(crud.sel.id, "statut", newStatut, msg);
+    } catch {
+      showToast("danger", "❌", "Erreur de connexion au serveur");
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      await fetch(`${API}/${crud.editItem.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name:              crud.editVals.nom,
+          type:              crud.editVals.type,
+          location:          crud.editVals.location,
+          contact_email:     crud.editVals.email,
+          statut:            crud.editVals.statut,
+        }),
+      });
+      crud.saveEdit();
+    } catch {
+      showToast("danger", "❌", "Erreur de connexion au serveur");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!crud.confirmId) return;
+    try {
+      await fetch(`${API}/${crud.confirmId}`, { method: "DELETE" });
+      crud.confirmDelete();
+    } catch {
+      showToast("danger", "❌", "Erreur de connexion au serveur");
+    }
+  };
 
   return (
     <>
@@ -31,14 +78,13 @@ export default function GererFournisseurs({ data, setData, showToast }) {
         </div>
         <div className="panel-body">
 
-          {/* Recherche */}
           <div className="groupbox">
             <span className="groupbox-legend">Rechercher fournisseur</span>
             <div className="form-row" style={{ marginTop: 8 }}>
               <span className="form-label">Nom :</span>
               <input
                 className="form-input"
-                placeholder="ex: Société Alpha"
+                placeholder="ex: Himalaya Organics"
                 value={recherche}
                 onChange={e => setRecherche(e.target.value)}
               />
@@ -55,7 +101,6 @@ export default function GererFournisseurs({ data, setData, showToast }) {
             </div>
           </div>
 
-          {/* Liste */}
           <div className="groupbox">
             <span className="groupbox-legend">Liste fournisseurs</span>
             <div className="stat-grid" style={{ marginTop: 8 }}>
@@ -81,7 +126,7 @@ export default function GererFournisseurs({ data, setData, showToast }) {
             ) : (
               <table className="data-table">
                 <thead>
-                  <tr><th>Nom</th><th>Statut</th><th>Date</th></tr>
+                  <tr><th>Nom</th><th>Type</th><th>Localisation</th><th>Email</th><th>Statut</th></tr>
                 </thead>
                 <tbody>
                   {filtered.map(f => (
@@ -91,8 +136,10 @@ export default function GererFournisseurs({ data, setData, showToast }) {
                       onClick={() => crud.setSelected(f.id)}
                     >
                       <td>{f.nom}</td>
+                      <td>{f.type || "—"}</td>
+                      <td>{f.location || "—"}</td>
+                      <td>{f.email || "—"}</td>
                       <td><Badge s={f.statut} /></td>
-                      <td>{f.date}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -100,8 +147,8 @@ export default function GererFournisseurs({ data, setData, showToast }) {
             )}
 
             <div className="btn-row">
-              <button className="btn btn-success"   disabled={!crud.sel} onClick={() => crud.updateField(crud.sel.id, "statut", "Actif",    `${crud.sel.nom} approuvé`)}>✅ Approuver</button>
-              <button className="btn btn-warning"   disabled={!crud.sel} onClick={() => crud.updateField(crud.sel.id, "statut", "Suspendu", `${crud.sel.nom} suspendu`)}>⛔ Suspendre</button>
+              <button className="btn btn-success"   disabled={!crud.sel} onClick={() => handleStatut("Actif",    `${crud.sel.nom} approuvé`)}>✅ Approuver</button>
+              <button className="btn btn-warning"   disabled={!crud.sel} onClick={() => handleStatut("Suspendu", `${crud.sel.nom} suspendu`)}>⛔ Suspendre</button>
               <button className="btn btn-secondary" disabled={!crud.sel} onClick={() => crud.openEdit(crud.sel)}>✏️ Modifier</button>
               <button className="btn btn-danger"    disabled={!crud.sel} onClick={() => crud.openConfirm(crud.sel.id)}>🗑️ Supprimer</button>
             </div>
@@ -110,7 +157,7 @@ export default function GererFournisseurs({ data, setData, showToast }) {
           <div className="statusbar">
             <span>{filtered.length} fournisseur(s) affiché(s)</span>
             {crud.sel
-              ? <span>Sélection : {crud.sel.nom}</span>
+              ? <span>Sélection : {crud.sel.nom} — {crud.sel.location}</span>
               : <span style={{ color: "var(--warning)" }}>⚠ Cliquez sur une ligne</span>}
           </div>
         </div>
@@ -122,14 +169,14 @@ export default function GererFournisseurs({ data, setData, showToast }) {
           fields={FIELDS}
           values={crud.editVals}
           onChange={crud.onChange}
-          onSave={() => crud.saveEdit()}
+          onSave={handleSaveEdit}
           onCancel={crud.closeEdit}
         />
       )}
       {crud.confirmId && (
         <ConfirmDialog
           itemName={crud.confirmItem?.nom}
-          onConfirm={crud.confirmDelete}
+          onConfirm={handleDelete}
           onCancel={crud.closeConfirm}
         />
       )}
