@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:consomateur_app/core/theme/app_theme.dart';
 import 'package:consomateur_app/core/widgets/app_empty_state.dart';
 import 'package:consomateur_app/core/widgets/product_tile.dart';
 import 'package:consomateur_app/features/product_discovery/domain/entities/product.dart';
 import 'package:consomateur_app/features/product_discovery/domain/repositories/product_repository.dart';
+import 'package:consomateur_app/features/user_management/presentation/providers/auth_provider.dart';
 
 class SearchScreen extends StatefulWidget {
   final ProductRepository productRepository;
@@ -20,15 +22,20 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _isLoading = false;
 
   void _performSearch(String query) async {
-    if (query.isEmpty) {
-      setState(() => _searchResults = []);
+    final trimmedQuery = query.trim();
+    if (trimmedQuery.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _searchResults = [];
+        _isLoading = false;
+      });
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      final searchResults = await widget.productRepository.searchProducts(query);
+      final searchResults = await widget.productRepository.searchProducts(trimmedQuery);
 
       if (!mounted) return;
       setState(() {
@@ -96,6 +103,9 @@ class _SearchScreenState extends State<SearchScreen> {
                       itemCount: _searchResults.length,
                       itemBuilder: (context, index) {
                         final product = _searchResults[index];
+                        final authProvider = context.watch<AuthProvider>();
+                        final isFavorite = authProvider.currentUser?.favorites.contains(product.id) ?? false;
+
                         return ProductTile(
                           product: product,
                           onTap: () {
@@ -104,6 +114,37 @@ class _SearchScreenState extends State<SearchScreen> {
                               '/product-detail',
                               arguments: product,
                             );
+                          },
+                          isFavorite: isFavorite,
+                          onFavoritePressed: () async {
+                            final messenger = ScaffoldMessenger.of(context);
+                            if (!authProvider.isAuthenticated) {
+                              messenger.showSnackBar(
+                                const SnackBar(content: Text('Please log in to add items to your wishlist.')),
+                              );
+                              return;
+                            }
+
+                            try {
+                              if (isFavorite) {
+                                await authProvider.removeFromFavorites(product.id);
+                                if (!mounted) return;
+                                messenger.showSnackBar(
+                                  const SnackBar(content: Text('Removed from wishlist')),
+                                );
+                              } else {
+                                await authProvider.addToFavorites(product.id);
+                                if (!mounted) return;
+                                messenger.showSnackBar(
+                                  const SnackBar(content: Text('Added to wishlist')),
+                                );
+                              }
+                            } catch (e) {
+                              if (!mounted) return;
+                              messenger.showSnackBar(
+                                SnackBar(content: Text('Unable to update wishlist: $e')),
+                              );
+                            }
                           },
                         );
                       },

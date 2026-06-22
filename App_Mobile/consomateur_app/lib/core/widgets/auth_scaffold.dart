@@ -116,7 +116,7 @@ class _BrandHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Ethical Commerce',
+              'Ethico',
               style: GoogleFonts.plusJakartaSans(
                 color: Colors.white,
                 fontSize: 17,

@@ -28,29 +28,29 @@ class ProductModel extends Product {
 
     return ProductModel(
       id: _parseId(json),
-      name: json['name'] as String,
-      category: json['category'] as String,
-      price: (json['price'] as num).toDouble(),
-      currency: json['currency'] as String,
-      originCountry: json['origin_country'] as String,
-      fairTradeCertified: json['fair_trade_certified'] as bool,
-      ethicalScore: (json['ethical_score'] as num).toInt(),
-      carbonFootprintKg: (json['carbon_footprint_kg'] as num).toDouble(),
-        composition: (json['composition'] as List<dynamic>?)
-            ?.map((item) => ProductCompositionModel.fromJson(
-              item as Map<String, dynamic>))
-            .toList() ??
+      name: json['name']?.toString() ?? '',
+      category: json['category']?.toString() ?? '',
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
+      currency: json['currency']?.toString() ?? 'EUR',
+      originCountry: json['origin_country']?.toString() ?? '',
+      fairTradeCertified: json['fair_trade_certified'] as bool? ?? false,
+      ethicalScore: (json['ethical_score'] as num?)?.toInt() ?? 0,
+      carbonFootprintKg: (json['carbon_footprint_kg'] as num?)?.toDouble() ?? 0.0,
+      composition: (json['composition'] as List<dynamic>?)
+              ?.map((item) => ProductCompositionModel.fromJson(
+                    item as Map<String, dynamic>))
+              .toList() ??
           [],
-        blockchainRootHash: json['blockchain_root_hash'] as String?,
-        processes: (json['processes'] as List<dynamic>?)
-            ?.map((p) => ProductProcessModel.fromJson(p as Map<String, dynamic>))
-            .toList() ??
+      blockchainRootHash: json['blockchain_root_hash']?.toString(),
+      processes: (json['processes'] as List<dynamic>?)
+              ?.map((p) => ProductProcessModel.fromJson(p as Map<String, dynamic>))
+              .toList() ??
           [],
       producer: ProducerInfoModel.fromJson(
-          json['producer'] as Map<String, dynamic>),
+          json['producer'] as Map<String, dynamic>? ?? <String, dynamic>{}),
       labels: labels,
-      stock: (json['stock'] as num).toInt(),
-      rating: (json['rating'] as num).toDouble(),
+      stock: (json['stock'] as num?)?.toInt() ?? 0,
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -102,10 +102,10 @@ class ProductCompositionModel extends ProductComposition {
     final ingredientVal = (json['ingredient'] ?? json['material'])?.toString() ?? '';
     return ProductCompositionModel(
       ingredient: ingredientVal,
-      percentage: (json['percentage'] as num).toInt(),
-      origin: json['origin'] as String,
-      isRecycled: json['is_recycled'] as bool,
-      isOrganic: json['is_organic'] as bool,
+      percentage: (json['percentage'] as num?)?.toInt() ?? 0,
+      origin: json['origin']?.toString() ?? '',
+      isRecycled: json['is_recycled'] as bool? ?? false,
+      isOrganic: json['is_organic'] as bool? ?? false,
     );
   }
 
@@ -129,9 +129,9 @@ class ProductProcessModel extends ProductProcess {
 
   factory ProductProcessModel.fromJson(Map<String, dynamic> json) {
     return ProductProcessModel(
-      stepNumber: (json['step_number'] as num).toInt(),
-      process: json['process'] as String,
-      previousHash: json['previous_hash'] as String,
+      stepNumber: (json['step_number'] as num?)?.toInt() ?? 0,
+      process: json['process']?.toString() ?? '',
+      previousHash: json['previous_hash']?.toString() ?? '',
     );
   }
 

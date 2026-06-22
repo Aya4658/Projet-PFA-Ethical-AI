@@ -71,7 +71,7 @@ class MyApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
-        title: 'Ethical Commerce App',
+        title: 'Ethico',
         theme: AppTheme.light,
         initialRoute: '/',
         onGenerateRoute: (settings) {
