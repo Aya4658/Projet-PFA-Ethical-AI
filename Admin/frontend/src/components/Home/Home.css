@@ -1,0 +1,74 @@
+/* Home — page d'accueil */
+
+.home-wrapper {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.home-hero {
+  text-align: center;
+  padding: 32px 16px 24px;
+}
+
+.home-hero-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.home-hero-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 6px;
+}
+
+.home-hero-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  padding-bottom: 24px;
+}
+
+@media (max-width: 900px) {
+  .home-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.home-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 14px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.18s;
+  box-shadow: var(--shadow);
+}
+
+.home-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 16px rgba(27,94,32,0.12);
+  transform: translateY(-2px);
+}
+
+.home-card-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.home-card-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 4px;
+}
+
+.home-card-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
