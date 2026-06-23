@@ -4,22 +4,125 @@
   <meta charset="UTF-8">
   <title>AI Bot - Test UI</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 700px; margin: 60px auto; background: #f5f5f5; }
-    h1 { color: #2d6a4f; }
-    #chat-box { background: white; border: 1px solid #ccc; border-radius: 8px;
-                height: 350px; overflow-y: auto; padding: 16px; margin-bottom: 12px; }
-    .user-msg { color: #1565c0; margin: 8px 0; }
-    .bot-msg  { color: #2d6a4f; margin: 8px 0; background: #e8f5e9;
-                padding: 8px; border-radius: 6px; }
-    .error-msg { color: #c62828; }
-    #input-area { display: flex; gap: 8px; }
-    #user-input { flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 15px; }
-    #send-btn { padding: 10px 20px; background: #2d6a4f; color: white;
-                border: none; border-radius: 6px; cursor: pointer; font-size: 15px; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 900px; margin: 60px auto; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); padding: 20px; }
+    h1 { color: #2d6a4f; text-align: center; font-size: 2.2em; margin-bottom: 30px; }
+    #chat-box { 
+      background: white; 
+      border: 2px solid #2d6a4f; 
+      border-radius: 12px;
+      height: 500px; 
+      overflow-y: auto; 
+      padding: 20px; 
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .user-msg { 
+      color: white; 
+      margin: 12px 0; 
+      text-align: right;
+      padding: 12px 16px;
+      background: #2d6a4f;
+      border-radius: 12px;
+      max-width: 80%;
+      margin-left: auto;
+      word-wrap: break-word;
+      box-shadow: 0 2px 4px rgba(45, 106, 79, 0.3);
+    }
+    .bot-msg  { 
+      color: #1a1a1a; 
+      margin: 12px 0; 
+      background: #f0f8f5;
+      padding: 16px; 
+      border-radius: 12px;
+      border-left: 4px solid #2d6a4f;
+      max-width: 90%;
+      word-wrap: break-word;
+      box-shadow: 0 2px 4px rgba(45, 106, 79, 0.15);
+      line-height: 1.6;
+    }
+    .bot-msg h3 { color: #2d6a4f; margin: 10px 0 8px 0; font-size: 1.05em; }
+    .bot-msg p { margin: 8px 0; }
+    .bot-msg ul, .bot-msg ol { margin: 8px 0; padding-left: 20px; }
+    .bot-msg li { margin: 5px 0; }
+    .bot-msg strong { color: #1b4332; }
+    .bot-msg em { color: #52796f; font-style: italic; }
+    .product-card {
+      background: white;
+      border: 1px solid #d4e8e0;
+      border-radius: 8px;
+      padding: 12px;
+      margin: 8px 0;
+      margin-left: 10px;
+    }
+    .product-score {
+      display: inline-block;
+      background: #40916c;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 0.9em;
+    }
+    .product-score.high { background: #40916c; }
+    .product-score.medium { background: #ffc107; }
+    .product-score.low { background: #e53935; }
+    .error-msg { 
+      color: #c62828; 
+      background: #ffebee;
+      padding: 12px 16px;
+      border-radius: 8px;
+      border-left: 4px solid #c62828;
+      margin: 12px 0;
+    }
+    #input-area { 
+      display: flex; 
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+    #user-input { 
+      flex: 1; 
+      padding: 12px 16px; 
+      border-radius: 8px; 
+      border: 2px solid #ddd; 
+      font-size: 15px;
+      transition: border-color 0.3s;
+    }
+    #user-input:focus {
+      outline: none;
+      border-color: #2d6a4f;
+    }
+    #send-btn { 
+      padding: 12px 24px; 
+      background: #2d6a4f; 
+      color: white;
+      border: none; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      font-size: 15px;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
     #send-btn:hover { background: #1b4332; }
-    #clear-btn { padding: 10px 16px; background: #e53935; color: white;
-                 border: none; border-radius: 6px; cursor: pointer; font-size: 15px; }
-    #status { margin-top: 10px; font-size: 13px; color: #888; }
+    #send-btn:active { transform: scale(0.98); }
+    #clear-btn { 
+      padding: 12px 20px; 
+      background: #e53935; 
+      color: white;
+      border: none; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      font-size: 15px;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+    #clear-btn:hover { background: #c62828; }
+    #status { 
+      margin-top: 10px; 
+      font-size: 14px; 
+      color: #666; 
+      text-align: center;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -33,7 +136,33 @@
   <div id="status"></div>
 
   <script>
-    const API_URL = "http://127.0.0.1:8001/chat";
+    const API_URL = "http://127.0.0.1:8000/chat";
+
+    function formatBotMessage(text) {
+      // Améliore le formatage du message avec des styles et emojis
+      let formatted = text;
+      
+      // Ajoute des emojis et du formatage pour les sections clés
+      formatted = formatted.replace(/^(Désolé|Sorry)/gi, "❌ $1");
+      formatted = formatted.replace(/^(Impact|Éthique|Ethics|Analyse)/gi, "📊 $1");
+      formatted = formatted.replace(/^(Produit|Product|Savon|Soap)/gi, "📦 $1");
+      formatted = formatted.replace(/^(Score|Évaluation|Rating)/gi, "⭐ $1");
+      formatted = formatted.replace(/^(Composition|Ingredients)/gi, "🧪 $1");
+      formatted = formatted.replace(/^(Prix|Price|Coût)/gi, "💰 $1");
+      formatted = formatted.replace(/^(Pays|Country|Origine)/gi, "🌍 $1");
+      formatted = formatted.replace(/^(Label|Certification)/gi, "✓ $1");
+      formatted = formatted.replace(/^(Conclusion|Recommandation)/gi, "🎯 $1");
+      
+      // Ajoute des sauts de ligne et mise en forme pour les listes
+      formatted = formatted.replace(/- /g, "<br>• ");
+      formatted = formatted.replace(/\n/g, "<br>");
+      
+      // Met en gras les éléments importants entre astérisques
+      formatted = formatted.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+      formatted = formatted.replace(/\*(.*?)\*/g, "<em>$1</em>");
+      
+      return `<div class="bot-msg">${formatted}</div>`;
+    }
 
     async function sendMessage() {
       const input = document.getElementById("user-input");
@@ -42,9 +171,10 @@
       const message = input.value.trim();
       if (!message) return;
 
-      chatBox.innerHTML += `<div class="user-msg"><b>Vous :</b> ${message}</div>`;
+      chatBox.innerHTML += `<div class="user-msg"><b>👤 Vous:</b> ${message}</div>`;
       input.value = "";
-      status.textContent = "En attente de la réponse...";
+      status.textContent = "⏳ Analyse en cours...";
+      chatBox.scrollTop = chatBox.scrollHeight;
 
       try {
         const response = await fetch(API_URL, {
@@ -53,10 +183,11 @@
           body: JSON.stringify({ message: message })
         });
         const data = await response.json();
-        chatBox.innerHTML += `<div class="bot-msg"><b>AI :</b> ${data.reply}</div>`;
+        const formattedMsg = formatBotMessage(data.reply);
+        chatBox.innerHTML += `<div style="margin: 12px 0;"><b>🤖 AI Assistant:</b></div>${formattedMsg}`;
         status.textContent = "";
       } catch (err) {
-        chatBox.innerHTML += `<div class="error-msg"><b>Erreur :</b> Impossible de contacter le serveur. Assurez-vous que le backend tourne sur le port 8001.</div>`;
+        chatBox.innerHTML += `<div class="error-msg"><b>⚠️ Erreur:</b> Impossible de contacter le serveur. Assurez-vous que le backend tourne sur le port 8000.</div>`;
         status.textContent = "";
       }
       chatBox.scrollTop = chatBox.scrollHeight;
