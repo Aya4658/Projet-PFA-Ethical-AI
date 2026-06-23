@@ -3,12 +3,9 @@ import "./Home.css";
 export default function Home({ onNavigate }) {
   const cards = [
     { icon: "🏭", label: "Fournisseurs",  desc: "Gérer et approuver les comptes",   page: "fournisseurs",   section: "fournisseur" },
-    { icon: "📦", label: "Produits",       desc: "Valider avant publication",         page: "produits",       section: "fournisseur" },
-    { icon: "🏅", label: "Certifications", desc: "Contrôler les certifications",      page: "certifications", section: "fournisseur" },
-    { icon: "⛓️", label: "Blockchain",     desc: "Vérifier la cohérence des blocs",   page: "blockchain",     section: "fournisseur" },
+    { icon: "📦", label: "Produits",       desc: "Gérer les informations produits",   page: "produits",       section: "fournisseur" },
     { icon: "👥", label: "Utilisateurs",   desc: "Gérer les comptes utilisateurs",    page: "utilisateurs",   section: "user" },
-    { icon: "💬", label: "Avis",           desc: "Modérer les avis clients",          page: "avis",           section: "user" },
-    { icon: "🚨", label: "Signalements",   desc: "Traiter les signalements urgents",  page: "signalements",   section: "user" },
+    { icon: "🚨", label: "Signalements",   desc: "Traiter les signalements produits", page: "signalements",   section: "user" },
     { icon: "📊", label: "Statistiques",   desc: "Consulter les indicateurs globaux", page: "statistiques",   section: "user" },
   ];
 
@@ -17,7 +14,7 @@ export default function Home({ onNavigate }) {
       <div className="home-hero">
         <div className="home-hero-icon">🌿</div>
         <h1 className="home-hero-title">Bienvenue sur EthicChain Admin</h1>
-        <p className="home-hero-sub">Plateforme de commerce équitable &amp; blockchain — Tableau de bord principal</p>
+        <p className="home-hero-sub">Plateforme de commerce équitable — Tableau de bord principal</p>
       </div>
 
       <div className="home-grid">

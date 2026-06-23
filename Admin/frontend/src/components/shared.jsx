@@ -3,9 +3,11 @@ import { useState, useCallback } from "react";
 // ─── BADGE ────────────────────────────────────────────────────────
 export function Badge({ s }) {
   const map = {
-    Actif: "badge-ok", Valide: "badge-ok",
-    Attente: "badge-warn", "En attente": "badge-warn", "En revue": "badge-info", "En cours": "badge-info",
-    Bloqué: "badge-err", Suspendu: "badge-err", Expiré: "badge-err", Urgent: "badge-err", Signalé: "badge-err",
+    Actif: "badge-ok", Valide: "badge-ok", Résolu: "badge-ok",
+    Attente: "badge-warn", "En attente": "badge-warn", "En revue": "badge-info",
+    "En cours": "badge-info", "En cours d'examen": "badge-info",
+    Bloqué: "badge-err", Banni: "badge-err", Suspendu: "badge-err",
+    Expiré: "badge-err", Urgent: "badge-err", Signalé: "badge-err", Rejeté: "badge-err",
   };
   return <span className={`badge ${map[s] || "badge-info"}`}>{s}</span>;
 }

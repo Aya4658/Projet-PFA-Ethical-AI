@@ -1,14 +1,14 @@
-//http://localhost:5000/api/users
 import { useState } from "react";
 import { Badge, useCRUD, EditModal, ConfirmDialog } from "../shared.jsx";
 import "./GererUsers.css";
 
 const API = "http://localhost:5000/api/users";
+const STATUS_OPTIONS = ["Actif", "Bloqué", "Banni"];
 
 const FIELDS = [
   { key: "nom",         label: "Nom complet" },
   { key: "email",       label: "Email", type: "email" },
-  { key: "statut",      label: "Statut", type: "select", options: ["Actif", "Bloqué"] },
+  { key: "statut",      label: "Statut", type: "select", options: STATUS_OPTIONS },
   { key: "inscription", label: "Date inscription" },
 ];
 
@@ -25,7 +25,9 @@ export default function GererUsers({ data, setData, showToast }) {
         body: JSON.stringify({ statut }),
       });
       if (!res.ok) throw new Error();
-      crud.updateField(crud.sel.id, "statut", statut, msg);
+      const updated = await res.json();
+      setData(prev => prev.map(u => u.id === updated.id ? updated : u));
+      showToast("success", "✅", msg);
     } catch {
       showToast("danger", "❌", "Erreur de connexion au serveur");
     }
@@ -39,7 +41,10 @@ export default function GererUsers({ data, setData, showToast }) {
         body: JSON.stringify(crud.editVals),
       });
       if (!res.ok) throw new Error();
-      crud.saveEdit();
+      const updated = await res.json();
+      setData(prev => prev.map(u => u.id === updated.id ? updated : u));
+      crud.closeEdit();
+      showToast("success", "✅", `${updated.nom} mis à jour`);
     } catch {
       showToast("danger", "❌", "Erreur de connexion au serveur");
     }
@@ -60,6 +65,8 @@ export default function GererUsers({ data, setData, showToast }) {
     (filtreStatut === "Tous" || u.statut === filtreStatut)
   );
 
+  const countBy = status => data.filter(u => u.statut === status).length;
+
   return (
     <>
       <div className="panel">
@@ -77,12 +84,13 @@ export default function GererUsers({ data, setData, showToast }) {
               <span className="form-label">Nom :</span>
               <input
                 className="form-input"
-                placeholder="ex: Leila Mansouri"
+                placeholder="ex: User_1"
                 value={recherche}
                 onChange={e => setRecherche(e.target.value)}
               />
               <select className="form-select" value={filtreStatut} onChange={e => setFiltreStatut(e.target.value)}>
-                <option>Tous</option><option>Actif</option><option>Bloqué</option>
+                <option>Tous</option>
+                {STATUS_OPTIONS.map(s => <option key={s}>{s}</option>)}
               </select>
             </div>
           </div>
@@ -91,8 +99,9 @@ export default function GererUsers({ data, setData, showToast }) {
             <span className="groupbox-legend">Liste utilisateurs</span>
             <div className="stat-grid" style={{ marginTop: 8 }}>
               <div className="stat-box"><div className="stat-num">{data.length}</div><div className="stat-lbl">Total</div></div>
-              <div className="stat-box"><div className="stat-num red">{data.filter(u => u.statut === "Bloqué").length}</div><div className="stat-lbl">Bloqués</div></div>
-              <div className="stat-box"><div className="stat-num blue">{data.filter(u => u.statut === "Actif").length}</div><div className="stat-lbl">Actifs</div></div>
+              <div className="stat-box"><div className="stat-num blue">{countBy("Actif")}</div><div className="stat-lbl">Actifs</div></div>
+              <div className="stat-box"><div className="stat-num red">{countBy("Bloqué")}</div><div className="stat-lbl">Bloqués</div></div>
+              <div className="stat-box"><div className="stat-num orange">{countBy("Banni")}</div><div className="stat-lbl">Bannis</div></div>
             </div>
 
             {filtered.length === 0 ? (
@@ -106,7 +115,7 @@ export default function GererUsers({ data, setData, showToast }) {
                       <td>{u.nom}</td>
                       <td style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11 }}>{u.email}</td>
                       <td><Badge s={u.statut} /></td>
-                      <td>{u.inscription}</td>
+                      <td>{u.inscription || "—"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -115,7 +124,8 @@ export default function GererUsers({ data, setData, showToast }) {
 
             <div className="btn-row">
               <button className="btn btn-warning"   disabled={!crud.sel || crud.sel.statut === "Bloqué"} onClick={() => handleStatut("Bloqué", `${crud.sel.nom} bloqué`)}>⛔ Bloquer</button>
-              <button className="btn btn-success"   disabled={!crud.sel || crud.sel.statut === "Actif"}  onClick={() => handleStatut("Actif", `${crud.sel.nom} débloqué`)}>✅ Débloquer</button>
+              <button className="btn btn-danger"    disabled={!crud.sel || crud.sel.statut === "Banni"}  onClick={() => handleStatut("Banni", `${crud.sel.nom} banni`)}>🚫 Bannir</button>
+              <button className="btn btn-success"   disabled={!crud.sel || crud.sel.statut === "Actif"} onClick={() => handleStatut("Actif", `${crud.sel.nom} réactivé`)}>✅ Réactiver</button>
               <button className="btn btn-secondary" disabled={!crud.sel} onClick={() => crud.openEdit(crud.sel)}>✏️ Modifier</button>
               <button className="btn btn-danger"    disabled={!crud.sel} onClick={() => crud.openConfirm(crud.sel.id)}>🗑️ Supprimer</button>
             </div>
@@ -124,7 +134,7 @@ export default function GererUsers({ data, setData, showToast }) {
           <div className="statusbar">
             <span>{filtered.length} utilisateur(s) affiché(s)</span>
             {crud.sel
-              ? <span>Sélection : {crud.sel.nom}</span>
+              ? <span>Sélection : {crud.sel.nom} — {crud.sel.statut}</span>
               : <span style={{ color: "var(--warning)" }}>⚠ Cliquez sur une ligne</span>}
           </div>
         </div>

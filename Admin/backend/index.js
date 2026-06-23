@@ -1,4 +1,5 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -197,15 +198,12 @@ function normalizeUser(doc) {
     (prenom && nomFamille ? `${prenom} ${nomFamille}` : prenom || nomFamille) ||
     'Inconnu';
 
-  let statut = obj.statut;
-  if (!statut) {
-    if (obj.status === 'active' || obj.status === 'Actif') statut = 'Actif';
-    else if (obj.status === 'blocked' || obj.status === 'Bloqué' || obj.isBlocked) statut = 'Bloqué';
-    else statut = 'Actif';
-  }
+  const statut = obj.status || obj.statut || 'Actif';
 
-  let inscription = obj.inscription || obj.dateInscription || obj.date_inscription;
-  if (!inscription && obj.createdAt) {
+  let inscription = obj.inscription_date || obj.inscription || obj.dateInscription || obj.date_inscription;
+  if (inscription && /^\d{4}-\d{2}-\d{2}$/.test(inscription)) {
+    inscription = new Date(inscription + 'T00:00:00').toLocaleDateString('fr-FR');
+  } else if (!inscription && obj.createdAt) {
     inscription = new Date(obj.createdAt).toLocaleDateString('fr-FR');
   }
 
@@ -215,6 +213,14 @@ function normalizeUser(doc) {
     email: obj.email || '',
     statut,
     inscription: inscription || '',
+    country: obj.country || '',
+    stats: obj.stats || {},
+    favorites: obj.favorites || [],
+    scan_history: obj.scan_history || [],
+    raw: {
+      inscription_date: obj.inscription_date || '',
+      createdAt: obj.createdAt || null,
+    },
   };
 }
 
@@ -234,7 +240,7 @@ app.patch('/api/users/:id/statut', async (req, res) => {
     const { statut } = req.body;
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      { $set: { statut } },
+      { $set: { status: statut, statut } },
       { new: true }
     );
     if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
@@ -248,9 +254,17 @@ app.patch('/api/users/:id/statut', async (req, res) => {
 app.put('/api/users/:id', async (req, res) => {
   try {
     const { nom, email, statut, inscription } = req.body;
+    const update = { nom, name: nom, email, status: statut, statut };
+    if (inscription) {
+      const iso = inscription.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+        ? `${inscription.slice(6, 10)}-${inscription.slice(3, 5)}-${inscription.slice(0, 2)}`
+        : inscription;
+      update.inscription_date = iso;
+      update.inscription = inscription;
+    }
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      { $set: { nom, email, statut, inscription } },
+      { $set: update },
       { new: true }
     );
     if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
@@ -266,6 +280,144 @@ app.delete('/api/users/:id', async (req, res) => {
     const user = await User.findByIdAndDelete(req.params.id);
     if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==================== ROUTES REPORTS (SIGNALEMENTS) ====================
+
+const ReportSchema = new mongoose.Schema({}, { strict: false, collection: 'reports' });
+const Report = mongoose.model('Report', ReportSchema);
+
+function normalizeReport(doc) {
+  const obj = doc.toObject ? doc.toObject() : doc;
+  return {
+    id: obj._id.toString(),
+    reportId: obj.id,
+    report_code: obj.report_code || '',
+    user_id: obj.user_id,
+    username: obj.username || '',
+    product_id: obj.product_id,
+    reason: obj.reason || '',
+    description: obj.description || '',
+    status: obj.status || 'En attente',
+    created_at: obj.created_at || null,
+    resolved_at: obj.resolved_at || null,
+    moderator_notes: obj.moderator_notes || '',
+  };
+}
+
+app.get('/api/reports', async (req, res) => {
+  try {
+    const reports = await Report.find().sort({ created_at: -1 });
+    res.json(reports.map(normalizeReport));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/reports/:id', async (req, res) => {
+  try {
+    const { status, moderator_notes } = req.body;
+    const update = {};
+    if (status) {
+      update.status = status;
+      if (['Résolu', 'Rejeté'].includes(status)) {
+        update.resolved_at = new Date().toISOString();
+      }
+    }
+    if (moderator_notes !== undefined) update.moderator_notes = moderator_notes;
+
+    const report = await Report.findByIdAndUpdate(
+      req.params.id,
+      { $set: update },
+      { new: true }
+    );
+    if (!report) return res.status(404).json({ error: 'Signalement non trouvé' });
+    res.json(normalizeReport(report));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/reports/:id', async (req, res) => {
+  try {
+    const report = await Report.findByIdAndDelete(req.params.id);
+    if (!report) return res.status(404).json({ error: 'Signalement non trouvé' });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==================== ROUTES STATISTIQUES ====================
+
+app.get('/api/statistics', async (req, res) => {
+  try {
+    const db = mongoose.connection.db;
+
+    const [
+      usersTotal,
+      usersByStatus,
+      productsTotal,
+      productsByCategory,
+      avgRating,
+      producersTotal,
+      reportsTotal,
+      reportsByStatus,
+      reportsByReason,
+      activity,
+      usersByCountry,
+    ] = await Promise.all([
+      db.collection('Users').countDocuments(),
+      db.collection('Users').aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]).toArray(),
+      db.collection('Products').countDocuments(),
+      db.collection('Products').aggregate([{ $group: { _id: '$category', count: { $sum: 1 } } }]).toArray(),
+      db.collection('Products').aggregate([{ $group: { _id: null, avg: { $avg: '$rating' } } }]).toArray(),
+      db.collection('Producers').countDocuments(),
+      db.collection('reports').countDocuments(),
+      db.collection('reports').aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]).toArray(),
+      db.collection('reports').aggregate([{ $group: { _id: '$reason', count: { $sum: 1 } } }]).toArray(),
+      db.collection('Users').aggregate([{
+        $group: {
+          _id: null,
+          totalScans: { $sum: '$stats.total_scans' },
+          totalPurchases: { $sum: '$stats.total_purchases' },
+          avgEthicalScore: { $avg: '$stats.ethical_awareness_score' },
+          totalCo2Saved: { $sum: '$stats.total_co2_saved_kg' },
+        },
+      }]).toArray(),
+      db.collection('Users').aggregate([{ $group: { _id: '$country', count: { $sum: 1 } } }]).toArray(),
+    ]);
+
+    const toMap = (arr) => Object.fromEntries(arr.map(r => [r._id || 'Inconnu', r.count]));
+
+    res.json({
+      users: {
+        total: usersTotal,
+        byStatus: toMap(usersByStatus),
+      },
+      products: {
+        total: productsTotal,
+        byCategory: toMap(productsByCategory),
+        avgRating: avgRating[0]?.avg ? Math.round(avgRating[0].avg * 10) / 10 : 0,
+      },
+      producers: { total: producersTotal },
+      reports: {
+        total: reportsTotal,
+        byStatus: toMap(reportsByStatus),
+        byReason: toMap(reportsByReason),
+      },
+      activity: {
+        totalScans: activity[0]?.totalScans || 0,
+        totalPurchases: activity[0]?.totalPurchases || 0,
+        avgEthicalScore: activity[0]?.avgEthicalScore ? Math.round(activity[0].avgEthicalScore) : 0,
+        totalCo2Saved: activity[0]?.totalCo2Saved ? Math.round(activity[0].totalCo2Saved * 100) / 100 : 0,
+      },
+      usersByCountry: toMap(usersByCountry),
+      generatedAt: new Date().toISOString(),
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -389,7 +541,9 @@ app.delete('/api/products/:id', async (req, res) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Serveur démarré sur le port ${PORT}`);
-  console.log(`📋 API Users:     http://localhost:${PORT}/api/users`);
-  console.log(`📦 API Products:  http://localhost:${PORT}/api/products`);
-  console.log(`🏭 API Producers: http://localhost:${PORT}/api/producers`);
+  console.log(`📋 API Users:        http://localhost:${PORT}/api/users`);
+  console.log(`📦 API Products:     http://localhost:${PORT}/api/products`);
+  console.log(`🏭 API Producers:    http://localhost:${PORT}/api/producers`);
+  console.log(`🚨 API Reports:      http://localhost:${PORT}/api/reports`);
+  console.log(`📊 API Statistics:   http://localhost:${PORT}/api/statistics`);
 });
