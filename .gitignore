@@ -7,3 +7,9 @@ yarn-debug.log*
 yarn-error.log*
 .env
 *.env
+venv/
+AI_Bot/venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env.local
