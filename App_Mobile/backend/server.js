@@ -26,9 +26,9 @@ const client = new MongoClient(MONGODB_URI, {
   retryWrites: true,
 });
 let db;
-let usersCollectionName = "users";
-let productsCollectionName = "products";
-let producersCollectionName = "producers";
+let usersCollectionName = "Users";
+let productsCollectionName = "Products";
+let producersCollectionName = "Producers";
 
 function sha256(input) {
   return nodeCrypto.createHash("sha256").update(input).digest("hex");
@@ -46,9 +46,9 @@ async function initDb() {
   await client.connect();
   db = client.db(DB_NAME);
 
-  usersCollectionName = await resolveCollectionName("users", "Users");
-  productsCollectionName = await resolveCollectionName("products", "Products");
-  producersCollectionName = await resolveCollectionName("producers", "Producers");
+  usersCollectionName = await resolveCollectionName("Users", "Users");
+  productsCollectionName = await resolveCollectionName("Products", "Products");
+  producersCollectionName = await resolveCollectionName("Producers", "Producers");
 }
 
 function usersCollection() {
@@ -379,8 +379,14 @@ app.get("/api/products", async (req, res) => {
     }
     if (local === "true") selector.origin_country = "France";
     if (equitable === "true") selector.fair_trade_certified = true;
-    if (bio === "true") selector.labels = { $in: ["Bio"] };
-    if (vegan === "true") selector.labels = { $in: ["Vegan Society", "Vegan"] };
+    const labelFilters = [];
+    if (bio === "true") labelFilters.push("Bio");
+    if (vegan === "true") labelFilters.push("Vegan", "Vegan Society");
+
+    if (labelFilters.length > 0) {
+      selector.labels = { $in: labelFilters };
+    }
+
 
     const products = await productsCollection().find(selector).toArray();
     const withProducers = await Promise.all(products.map(attachProducer));

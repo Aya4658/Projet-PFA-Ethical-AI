@@ -24,16 +24,12 @@ void main() async {
   try {
     await dotenv.load(fileName: '.env');
   } catch (firstError) {
-    try {
-      await dotenv.load(fileName: 'assets/.env');
-    } catch (secondError) {
+    
       throw Exception(
         'Unable to load environment file. '
-        'Tried .env and assets/.env. '
-        'First error: $firstError. '
-        'Second error: $secondError.',
+        'Tried .env .'
+        'Error: $firstError. '
       );
-    }
   }
 
   // Initialize shared preferences
