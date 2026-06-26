@@ -20,7 +20,14 @@ class MongoManager:
         try:
             self.client = MongoClient(uri)
             self.db = self.client[db_name]
-            self.products = self.db["products"]
+            collections = self.db.list_collection_names()
+            if "products" in collections:
+                self.products = self.db["products"]
+            elif "Products" in collections:
+                self.products = self.db["Products"]
+            else:
+                matched = [name for name in collections if name.lower() == "products"]
+                self.products = self.db[matched[0]] if matched else None
         except Exception:
             self.client = None
             self.db = None
