@@ -1,4 +1,7 @@
 const nodeCrypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
+const { StringDecoder } = require("string_decoder");
 const express = require("express");
 const cors = require("cors");
 
@@ -26,9 +29,9 @@ const client = new MongoClient(MONGODB_URI, {
   retryWrites: true,
 });
 let db;
-let usersCollectionName = "users";
-let productsCollectionName = "products";
-let producersCollectionName = "producers";
+let usersCollectionName = "Users";
+let productsCollectionName = "Products";
+let producersCollectionName = "Producers";
 
 function sha256(input) {
   return nodeCrypto.createHash("sha256").update(input).digest("hex");
@@ -46,9 +49,9 @@ async function initDb() {
   await client.connect();
   db = client.db(DB_NAME);
 
-  usersCollectionName = await resolveCollectionName("users", "Users");
-  productsCollectionName = await resolveCollectionName("products", "Products");
-  producersCollectionName = await resolveCollectionName("producers", "Producers");
+  usersCollectionName = await resolveCollectionName("Users", "Users");
+  productsCollectionName = await resolveCollectionName("Products", "Products");
+  producersCollectionName = await resolveCollectionName("Producers", "Producers");
 }
 
 function usersCollection() {
@@ -68,6 +71,48 @@ function parseNumericId(value) {
   return Number.isNaN(numeric) ? null : numeric;
 }
 
+function normalizeSourceTag(sourceTag) {
+  if (!sourceTag) return null;
+  const normalized = String(sourceTag).toLowerCase();
+  if (normalized === "openfoodfact" || normalized === "openfoodfacts") {
+    return "openFoodFacts";
+  }
+  if (normalized === "ethico" || normalized === "mongodb") {
+    return "mongodb";
+  }
+  return String(sourceTag);
+}
+
+function serializeProductFavorite(item) {
+  if (item == null) return "";
+  if (typeof item === "string" || typeof item === "number") {
+    return String(item);
+  }
+  if (typeof item === "object") {
+    const productId = String(item.product_id ?? item.id ?? "");
+    const sourceTag = normalizeSourceTag(item.source_tag ?? item.sourceTag ?? item.source);
+    return sourceTag ? `${sourceTag}:${productId}` : productId;
+  }
+  return "";
+}
+
+function parseSourceTaggedProductId(raw) {
+  const value = String(raw ?? "");
+  const separatorIndex = value.indexOf(":");
+  if (separatorIndex <= 0) {
+    return { source: null, id: value };
+  }
+
+  const prefix = value.slice(0, separatorIndex);
+  const candidate = normalizeSourceTag(prefix);
+  const id = value.slice(separatorIndex + 1);
+  if (!candidate) {
+    return { source: null, id: value };
+  }
+
+  return { source: candidate, id };
+}
+
 function mapUser(user) {
   if (!user) return null;
   return {
@@ -77,13 +122,20 @@ function mapUser(user) {
     country: user.country,
     preferences: user.preferences ?? {},
     stats: user.stats ?? {},
-    favorites: Array.isArray(user.favorites) ? user.favorites.map(String) : [],
+    favorites: Array.isArray(user.favorites)
+      ? user.favorites.map(serializeProductFavorite).filter(Boolean)
+      : [],
     scan_history: Array.isArray(user.scan_history)
-      ? user.scan_history.map((entry) => ({
-          product_id: String(entry.product_id),
-          timestamp: entry.timestamp ?? entry.scanned_at,
-          was_alternative_chosen: Boolean(entry.was_alternative_chosen),
-        }))
+      ? user.scan_history.map((entry) => {
+          const productId = String(entry.product_id ?? entry.productId ?? "");
+          const sourceTag = normalizeSourceTag(entry.source_tag ?? entry.sourceTag ?? entry.source);
+          return {
+            product_id: sourceTag ? `${sourceTag}:${productId}` : productId,
+            source_tag: sourceTag,
+            timestamp: entry.timestamp ?? entry.scanned_at,
+            was_alternative_chosen: Boolean(entry.was_alternative_chosen),
+          };
+        })
       : [],
   };
 }
@@ -107,6 +159,374 @@ async function attachProducer(product) {
       },
   };
 }
+
+async function fetchOpenFoodFactsJson(path, queryParams = {}) {
+  const url = new URL(`https://world.openfoodfacts.org${path}`);
+  Object.entries(queryParams).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      url.searchParams.set(key, String(value));
+    }
+  });
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      "User-Agent": "Ethico/1.0 (m.doblibennani@esisa.ac.ma)",
+    },
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Open Food Facts request failed: ${response.status} ${text}`);
+  }
+
+  return response.json();
+}
+
+const offCsvCandidates = [
+  path.resolve(__dirname, "../../../Datasets/en.openfoodfacts.org.products.csv"),
+  path.resolve(__dirname, "../../../Datasets/openfoodfactsfirst10rows.csv"),
+];
+const offCsvPath = offCsvCandidates.find((candidate) => fs.existsSync(candidate));
+if (!offCsvPath) {
+  throw new Error(
+    "Open Food Facts CSV data file not found. Place en.openfoodfacts.org.products.csv or openfoodfactsfirst10rows.csv in the repository Datasets folder."
+  );
+}
+
+const commentsJsonPath = path.resolve(__dirname, "../../../Datasets/final_products_with_comments.json");
+let commentsByProductId = new Map();
+
+function loadProductComments() {
+  try {
+    if (!fs.existsSync(commentsJsonPath)) {
+      return;
+    }
+
+    const raw = fs.readFileSync(commentsJsonPath, "utf-8");
+    const parsed = JSON.parse(raw);
+    const products = Array.isArray(parsed.products) ? parsed.products : [];
+
+    commentsByProductId = new Map(
+      products.map((product) => [String(product.id), Array.isArray(product.comments) ? product.comments : []])
+    );
+  } catch (error) {
+    console.warn("Failed to load product comments:", error.message);
+  }
+}
+
+function attachComments(product) {
+  if (!product) return product;
+
+  const productId = String(product.id ?? product._id ?? "");
+  const comments = commentsByProductId.get(productId) || product.comments || [];
+  return {
+    ...product,
+    comments,
+  };
+}
+
+loadProductComments();
+
+function detectCsvEncoding(filePath) {
+  const header = Buffer.alloc(4);
+  const fd = fs.openSync(filePath, "r");
+  try {
+    const { bytesRead } = fs.readSync(fd, header, 0, header.length, 0);
+    if (bytesRead >= 2) {
+      if (header[0] === 0xff && header[1] === 0xfe) {
+        return "utf16le";
+      }
+      if (header[0] === 0xfe && header[1] === 0xff) {
+        return "utf16le"; // treat big-endian data as UTF-16LE by swapping if needed
+      }
+    }
+    return "utf8";
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+let offCsvHeaderIndexes = null;
+
+async function loadOpenFoodFactsCsvHeader() {
+  if (offCsvHeaderIndexes) {
+    return offCsvHeaderIndexes;
+  }
+
+  const CHUNK_SIZE = 128 * 1024;
+  const encoding = detectCsvEncoding(offCsvPath);
+  const fileHandle = await fs.promises.open(offCsvPath, "r");
+  try {
+    let bytesRead = 0;
+    let headerText = "";
+    let buffer = Buffer.alloc(CHUNK_SIZE);
+
+    while (headerText.indexOf("\n") === -1) {
+      const readResult = await fileHandle.read(buffer, 0, CHUNK_SIZE, bytesRead);
+      if (readResult.bytesRead === 0) {
+        break;
+      }
+
+      headerText += buffer.slice(0, readResult.bytesRead).toString(encoding);
+      bytesRead += readResult.bytesRead;
+      if (bytesRead >= 4 * CHUNK_SIZE) {
+        break;
+      }
+    }
+
+    const newlineIndex = headerText.indexOf("\n");
+    if (newlineIndex < 0) {
+      throw new Error("Unable to read Open Food Facts CSV header.");
+    }
+
+    const headerLine = headerText.slice(0, newlineIndex).replace(/^\ufeff/, "").replace(/\r$/, "");
+    const headers = headerLine.split("\t");
+    offCsvHeaderIndexes = {
+      code: headers.indexOf("code"),
+      product_name: headers.indexOf("product_name"),
+      generic_name: headers.indexOf("generic_name"),
+      brands: headers.indexOf("brands"),
+      image_url: headers.indexOf("image_url"),
+      ecoscore_grade: headers.indexOf("ecoscore_grade"),
+      ingredients_text: headers.indexOf("ingredients_text"),
+      categories_tags: headers.indexOf("categories_tags"),
+      countries_tags: headers.indexOf("countries_tags"),
+      labels: headers.indexOf("labels"),
+    };
+  } finally {
+    await fileHandle.close();
+  }
+
+  if (!offCsvHeaderIndexes) {
+    throw new Error("Unable to read Open Food Facts CSV header.");
+  }
+
+  return offCsvHeaderIndexes;
+}
+
+async function searchOpenFoodFactsCsv(query, pageSize) {
+  const indexes = await loadOpenFoodFactsCsvHeader();
+  const normalize = (value) =>
+    String(value || "")
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .toLowerCase();
+  const normalizedQuery = normalize(query);
+  const results = [];
+
+  return new Promise((resolve, reject) => {
+    const encoding = detectCsvEncoding(offCsvPath);
+    const decoder = new StringDecoder(encoding);
+    const stream = fs.createReadStream(offCsvPath);
+    let buffered = "";
+    let isFirstLine = true;
+
+    const getColumnValue = (columns, index) =>
+      index >= 0 && index < columns.length ? String(columns[index]).trim() : "";
+
+    stream.on("data", (chunk) => {
+      buffered += decoder.write(chunk);
+      let lineEndIndex;
+
+      while ((lineEndIndex = buffered.indexOf("\n")) >= 0) {
+        let line = buffered.slice(0, lineEndIndex);
+        buffered = buffered.slice(lineEndIndex + 1);
+        line = line.replace(/\r$/, "");
+
+        if (isFirstLine) {
+          isFirstLine = false;
+          continue;
+        }
+
+        if (!line.trim()) {
+          continue;
+        }
+
+        const columns = line.split("\t");
+        const productName = getColumnValue(columns, indexes.product_name);
+        const genericName = getColumnValue(columns, indexes.generic_name);
+        const brands = getColumnValue(columns, indexes.brands);
+        const categories = getColumnValue(columns, indexes.categories_tags);
+        const labels = getColumnValue(columns, indexes.labels);
+        const countries = getColumnValue(columns, indexes.countries_tags);
+        const ingredientsText = getColumnValue(columns, indexes.ingredients_text);
+        const searchableText = normalize(
+          `${productName} ${genericName} ${brands} ${categories} ${labels} ${countries} ${ingredientsText}`
+        );
+
+        if (!searchableText.includes(normalizedQuery)) {
+          continue;
+        }
+
+        results.push({
+          code: getColumnValue(columns, indexes.code),
+          product_name: productName,
+          generic_name: genericName,
+          brands,
+          image_url: getColumnValue(columns, indexes.image_url),
+          ecoscore_grade: getColumnValue(columns, indexes.ecoscore_grade),
+          ingredients_text: ingredientsText,
+          categories_tags: categories,
+          countries_tags: countries,
+          labels: labels.split(",").map((label) => label.trim()).filter(Boolean),
+          source: "Open Food Facts CSV",
+        });
+
+        if (results.length >= pageSize) {
+          stream.destroy();
+          resolve(results);
+          return;
+        }
+      }
+    });
+
+    stream.on("end", () => {
+      if (buffered.trim()) {
+        const line = buffered.replace(/\r$/, "");
+        const columns = line.split("\t");
+        const productName = getColumnValue(columns, indexes.product_name);
+        const genericName = getColumnValue(columns, indexes.generic_name);
+        const brands = getColumnValue(columns, indexes.brands);
+        const categories = getColumnValue(columns, indexes.categories_tags);
+        const labels = getColumnValue(columns, indexes.labels);
+        const countries = getColumnValue(columns, indexes.countries_tags);
+        const ingredientsText = getColumnValue(columns, indexes.ingredients_text);
+        const searchableText = normalize(
+          `${productName} ${genericName} ${brands} ${categories} ${labels} ${countries} ${ingredientsText}`
+        );
+
+        if (searchableText.includes(normalizedQuery)) {
+          results.push({
+            code: getColumnValue(columns, indexes.code),
+            product_name: productName,
+            generic_name: genericName,
+            brands,
+            image_url: getColumnValue(columns, indexes.image_url),
+            ecoscore_grade: getColumnValue(columns, indexes.ecoscore_grade),
+            ingredients_text: ingredientsText,
+            categories_tags: categories,
+            countries_tags: countries,
+            labels: labels.split(",").map((label) => label.trim()).filter(Boolean),
+            source: "Open Food Facts CSV",
+          });
+        }
+      }
+      resolve(results);
+    });
+
+    stream.on("error", (error) => reject(error));
+  });
+}
+
+async function findOpenFoodFactsProductByBarcode(barcode) {
+  const indexes = await loadOpenFoodFactsCsvHeader();
+  const encoding = detectCsvEncoding(offCsvPath);
+  const decoder = new StringDecoder(encoding);
+  const stream = fs.createReadStream(offCsvPath);
+  let buffered = "";
+  let isFirstLine = true;
+
+  return new Promise((resolve, reject) => {
+    const getColumnValue = (columns, index) =>
+      index >= 0 && index < columns.length ? String(columns[index]).trim() : "";
+
+    stream.on("data", (chunk) => {
+      buffered += decoder.write(chunk);
+      let lineEndIndex;
+
+      while ((lineEndIndex = buffered.indexOf("\n")) >= 0) {
+        let line = buffered.slice(0, lineEndIndex);
+        buffered = buffered.slice(lineEndIndex + 1);
+        line = line.replace(/\r$/, "");
+
+        if (isFirstLine) {
+          isFirstLine = false;
+          continue;
+        }
+
+        if (!line.trim()) {
+          continue;
+        }
+
+        const columns = line.split("\t");
+        const code = getColumnValue(columns, indexes.code);
+        if (!code || String(code) !== barcode) {
+          continue;
+        }
+
+        stream.destroy();
+        resolve({
+          code,
+          product_name: getColumnValue(columns, indexes.product_name),
+          generic_name: getColumnValue(columns, indexes.generic_name),
+          brands: getColumnValue(columns, indexes.brands),
+          image_url: getColumnValue(columns, indexes.image_url),
+          ecoscore_grade: getColumnValue(columns, indexes.ecoscore_grade),
+          ingredients_text: getColumnValue(columns, indexes.ingredients_text),
+          categories_tags: getColumnValue(columns, indexes.categories_tags),
+          countries_tags: getColumnValue(columns, indexes.countries_tags),
+          labels: getColumnValue(columns, indexes.labels),
+          source: "Open Food Facts CSV",
+        });
+        return;
+      }
+    });
+
+    stream.on("end", () => {
+      resolve(null);
+    });
+
+    stream.on("error", (error) => reject(error));
+  });
+}
+
+async function findProductBySourceTaggedId(raw) {
+  const { source, id } = parseSourceTaggedProductId(raw);
+  if (source === "openFoodFacts") {
+    return await findOpenFoodFactsProductByBarcode(id);
+  }
+
+  const numericId = parseNumericId(id);
+  const query = numericId != null ? { id: numericId } : { barcode: id };
+  return await productsCollection().findOne(query);
+}
+
+app.get("/api/open-food-facts/products/:barcode", async (req, res) => {
+  try {
+    const barcode = String(req.params.barcode || "").trim();
+    if (!barcode) {
+      return res.status(400).json({ message: "barcode is required" });
+    }
+
+    const product = await findOpenFoodFactsProductByBarcode(barcode);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found in Open Food Facts CSV" });
+    }
+
+    return res.json(product);
+  } catch (error) {
+    return res.status(500).json({ message: `Fetching Open Food Facts product failed: ${error.message}` });
+  }
+});
+
+app.get("/api/open-food-facts/search", async (req, res) => {
+  try {
+    const query = String(req.query.q || "").trim();
+    if (!query) {
+      return res.status(400).json({ message: "q is required" });
+    }
+
+    const pageSize = Math.min(Math.max(Number.parseInt(String(req.query.page_size || "20"), 10) || 20, 1), 100);
+    const products = await searchOpenFoodFactsCsv(query, pageSize);
+
+    return res.json({ products });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Local Open Food Facts search failed.",
+      details: error.message,
+    });
+  }
+});
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
@@ -301,15 +721,28 @@ app.patch("/api/users/:id/preferences", async (req, res) => {
 app.post("/api/users/:id/favorites", async (req, res) => {
   try {
     const id = parseNumericId(req.params.id);
-    const productId = req.body?.productId;
+    const productId = String(req.body?.productId || "").trim();
+    const sourceTag = normalizeSourceTag(req.body?.sourceTag);
     if (id == null || !productId) {
       return res.status(400).json({ message: "user id and productId are required" });
     }
 
-    await usersCollection().updateOne(
-      { id },
-      { $addToSet: { favorites: String(productId) }, $set: { updated_at: new Date().toISOString() } }
-    );
+    const storedProductId = sourceTag ? `${sourceTag}:${productId}` : productId;
+    const pullValues = [];
+    if (sourceTag) {
+      pullValues.push(productId);
+    }
+
+    const update = {
+      $addToSet: { favorites: storedProductId },
+      $set: { updated_at: new Date().toISOString() },
+    };
+
+    if (pullValues.length > 0) {
+      update.$pull = { favorites: { $in: pullValues } };
+    }
+
+    await usersCollection().updateOne({ id }, update);
     return res.status(204).send();
   } catch (error) {
     return res.status(500).json({ message: `Adding favorite failed: ${error.message}` });
@@ -319,14 +752,20 @@ app.post("/api/users/:id/favorites", async (req, res) => {
 app.delete("/api/users/:id/favorites/:productId", async (req, res) => {
   try {
     const id = parseNumericId(req.params.id);
-    const productId = req.params.productId;
-    if (id == null || !productId) {
+    const rawProductId = String(req.params.productId || "").trim();
+    if (id == null || !rawProductId) {
       return res.status(400).json({ message: "user id and productId are required" });
+    }
+
+    const { source, id: strippedId } = parseSourceTaggedProductId(rawProductId);
+    const pullValues = [rawProductId];
+    if (source && strippedId) {
+      pullValues.push(strippedId);
     }
 
     await usersCollection().updateOne(
       { id },
-      { $pull: { favorites: String(productId) }, $set: { updated_at: new Date().toISOString() } }
+      { $pull: { favorites: { $in: pullValues } }, $set: { updated_at: new Date().toISOString() } }
     );
     return res.status(204).send();
   } catch (error) {
@@ -337,22 +776,28 @@ app.delete("/api/users/:id/favorites/:productId", async (req, res) => {
 app.post("/api/users/:id/scans", async (req, res) => {
   try {
     const id = parseNumericId(req.params.id);
-    const productId = req.body?.productId;
+    const productId = String(req.body?.productId || "").trim();
+    const sourceTag = normalizeSourceTag(req.body?.sourceTag);
     const wasAlternativeChosen = Boolean(req.body?.wasAlternativeChosen);
     if (id == null || !productId) {
       return res.status(400).json({ message: "user id and productId are required" });
     }
 
+    const storedProductId = sourceTag ? `${sourceTag}:${productId}` : productId;
+
+    const scanEntry = {
+      product_id: storedProductId,
+      timestamp: new Date().toISOString(),
+      was_alternative_chosen: wasAlternativeChosen,
+    };
+    if (sourceTag) {
+      scanEntry.source_tag = sourceTag;
+    }
+
     await usersCollection().updateOne(
       { id },
       {
-        $push: {
-          scan_history: {
-            product_id: String(productId),
-            timestamp: new Date().toISOString(),
-            was_alternative_chosen: wasAlternativeChosen,
-          },
-        },
+        $push: { scan_history: scanEntry },
         $inc: { "stats.total_scans": 1 },
         $set: { updated_at: new Date().toISOString() },
       }
@@ -379,12 +824,19 @@ app.get("/api/products", async (req, res) => {
     }
     if (local === "true") selector.origin_country = "France";
     if (equitable === "true") selector.fair_trade_certified = true;
-    if (bio === "true") selector.labels = { $in: ["Bio"] };
-    if (vegan === "true") selector.labels = { $in: ["Vegan Society", "Vegan"] };
+    const labelFilters = [];
+    if (bio === "true") labelFilters.push("Bio");
+    if (vegan === "true") labelFilters.push("Vegan", "Vegan Society");
+
+    if (labelFilters.length > 0) {
+      selector.labels = { $in: labelFilters };
+    }
+
 
     const products = await productsCollection().find(selector).toArray();
     const withProducers = await Promise.all(products.map(attachProducer));
-    return res.json(withProducers);
+    const withComments = withProducers.map(attachComments);
+    return res.json(withComments);
   } catch (error) {
     return res.status(500).json({ message: `Fetching products failed: ${error.message}` });
   }
@@ -392,15 +844,19 @@ app.get("/api/products", async (req, res) => {
 
 app.get("/api/products/:id", async (req, res) => {
   try {
-    const raw = req.params.id;
-    const numericId = parseNumericId(raw);
-    const query = numericId != null ? { id: numericId } : { barcode: raw };
-    const product = await productsCollection().findOne(query);
+    const raw = String(req.params.id || "");
+    const product = await findProductBySourceTaggedId(raw);
 
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
-    return res.json(await attachProducer(product));
+
+    if (product.code && !product.id) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    const enrichedProduct = await attachProducer(product);
+    return res.json(attachComments(enrichedProduct));
   } catch (error) {
     return res.status(500).json({ message: `Fetching product failed: ${error.message}` });
   }
@@ -408,8 +864,8 @@ app.get("/api/products/:id", async (req, res) => {
 
 async function start() {
   await initDb();
-  app.listen(PORT, () => {
-    console.log(`API server running on http://localhost:${PORT}`);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`API server running on http://0.0.0.0:${PORT}`);
   });
 }
 

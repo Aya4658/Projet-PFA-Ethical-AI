@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:consomateur_app/core/theme/app_theme.dart';
@@ -18,10 +20,19 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final Duration _searchDebounceDuration = const Duration(seconds: 1);
+  Timer? _searchDebounceTimer;
   List<Product> _searchResults = [];
   bool _isLoading = false;
 
-  void _performSearch(String query) async {
+  void _scheduleSearch(String query) {
+    _searchDebounceTimer?.cancel();
+    _searchDebounceTimer = Timer(_searchDebounceDuration, () {
+      _performSearch(query);
+    });
+  }
+
+  Future<void> _performSearch(String query) async {
     final trimmedQuery = query.trim();
     if (trimmedQuery.isEmpty) {
       if (!mounted) return;
@@ -53,6 +64,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   void dispose() {
+    _searchDebounceTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -65,7 +77,7 @@ class _SearchScreenState extends State<SearchScreen> {
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
           child: TextField(
             controller: _searchController,
-            onChanged: _performSearch,
+            onChanged: _scheduleSearch,
             decoration: InputDecoration(
               hintText: 'Search products, brands...',
               prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.primaryColor),
@@ -74,6 +86,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       icon: const Icon(Icons.close_rounded),
                       onPressed: () {
                         _searchController.clear();
+                        _searchDebounceTimer?.cancel();
                         _performSearch('');
                       },
                     )
@@ -104,7 +117,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       itemBuilder: (context, index) {
                         final product = _searchResults[index];
                         final authProvider = context.watch<AuthProvider>();
-                        final isFavorite = authProvider.currentUser?.favorites.contains(product.id) ?? false;
+                        final isFavorite = authProvider.currentUser?.favorites.contains(product.sourceAwareId) ?? false;
 
                         return ProductTile(
                           product: product,
@@ -127,13 +140,13 @@ class _SearchScreenState extends State<SearchScreen> {
 
                             try {
                               if (isFavorite) {
-                                await authProvider.removeFromFavorites(product.id);
+                                await authProvider.removeFromFavorites(product.sourceAwareId);
                                 if (!mounted) return;
                                 messenger.showSnackBar(
                                   const SnackBar(content: Text('Removed from wishlist')),
                                 );
                               } else {
-                                await authProvider.addToFavorites(product.id);
+                                await authProvider.addToFavorites(product.sourceAwareId);
                                 if (!mounted) return;
                                 messenger.showSnackBar(
                                   const SnackBar(content: Text('Added to wishlist')),

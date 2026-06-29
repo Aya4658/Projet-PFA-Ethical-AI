@@ -60,6 +60,7 @@ class OpenFoodFactsProductModel extends Product {
     required super.rating,
     super.blockchainRootHash,
     super.processes,
+    super.comments,
     super.source = ProductSource.openFoodFacts,
     this.nutritionData,
   });
@@ -95,6 +96,7 @@ class OpenFoodFactsProductModel extends Product {
       labels: labels,
       stock: 0,
       rating: 0.0,
+      comments: _parseComments(productJson['comments'] as List<dynamic>?),
       nutritionData: OpenFoodFactsNutritionData.fromJson(productJson),
     );
   }
@@ -206,6 +208,22 @@ class OpenFoodFactsProductModel extends Product {
     }
 
     return labels;
+  }
+
+  static List<ProductComment> _parseComments(List<dynamic>? commentsJson) {
+    if (commentsJson == null) return [];
+
+    return commentsJson.map((rawComment) {
+      final comment = rawComment is Map<String, dynamic> ? rawComment : <String, dynamic>{};
+      return ProductComment(
+        commentId: comment['comment_id']?.toString() ?? '',
+        userId: (comment['user_id'] as num?)?.toInt() ?? 0,
+        username: comment['username']?.toString() ?? '',
+        rating: (comment['rating'] as num?)?.toInt() ?? 0,
+        text: comment['text']?.toString() ?? '',
+        timestamp: comment['timestamp']?.toString() ?? '',
+      );
+    }).toList();
   }
 
   Map<String, dynamic> toJson() {

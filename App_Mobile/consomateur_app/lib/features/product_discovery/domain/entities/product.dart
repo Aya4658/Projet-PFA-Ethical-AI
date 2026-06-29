@@ -17,6 +17,7 @@ class Product extends Equatable {
   final double rating;
   final String? blockchainRootHash;
   final List<ProductProcess> processes;
+  final List<ProductComment> comments;
   final ProductSource source;
 
   const Product({
@@ -36,6 +37,7 @@ class Product extends Equatable {
     required this.rating,
     this.blockchainRootHash,
     this.processes = const [],
+    this.comments = const [],
     this.source = ProductSource.mongodb,
   });
 
@@ -56,6 +58,7 @@ class Product extends Equatable {
     double? rating,
     String? blockchainRootHash,
     List<ProductProcess>? processes,
+    List<ProductComment>? comments,
     ProductSource? source,
   }) {
     return Product(
@@ -75,8 +78,18 @@ class Product extends Equatable {
       rating: rating ?? this.rating,
       blockchainRootHash: blockchainRootHash ?? this.blockchainRootHash,
       processes: processes ?? this.processes,
+      comments: comments ?? this.comments,
       source: source ?? this.source,
     );
+  }
+
+  /// Returns source-aware product ID (e.g., "openFoodFacts:12345" or raw id for mongodb)
+  /// Useful for favorite/history operations that need to distinguish between sources
+  String get sourceAwareId {
+    if (source == ProductSource.openFoodFacts) {
+      return 'openFoodFacts:$id';
+    }
+    return id;
   }
 
   @override
@@ -98,8 +111,32 @@ class Product extends Equatable {
       rating,
       blockchainRootHash,
       processes,
+      comments,
       source,
     ];
+  }
+}
+
+class ProductComment extends Equatable {
+  final String commentId;
+  final int userId;
+  final String username;
+  final int rating;
+  final String text;
+  final String timestamp;
+
+  const ProductComment({
+    required this.commentId,
+    required this.userId,
+    required this.username,
+    required this.rating,
+    required this.text,
+    required this.timestamp,
+  });
+
+  @override
+  List<Object?> get props {
+    return [commentId, userId, username, rating, text, timestamp];
   }
 }
 

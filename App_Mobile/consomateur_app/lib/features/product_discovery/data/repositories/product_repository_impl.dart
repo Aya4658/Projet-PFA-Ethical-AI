@@ -15,8 +15,15 @@ class ProductRepositoryImpl implements ProductRepository {
   @override
   Future<Product> getProductById(String id) async {
     try {
+      // Try backend first with the full (potentially source-tagged) ID
       return await remoteDataSource.getProductById(id);
     } catch (_) {
+      // Fallback: if it's a source-tagged ID for openFoodFacts, extract barcode
+      final parsedId = _parseSourceTaggedId(id);
+      if (parsedId['source'] == 'openFoodFacts') {
+        return await openFoodFactsRemoteDataSource.getProductByBarcode(parsedId['id']!);
+      }
+      // Otherwise try as barcode
       return await openFoodFactsRemoteDataSource.getProductByBarcode(id);
     }
   }
@@ -52,5 +59,26 @@ class ProductRepositoryImpl implements ProductRepository {
     } catch (_) {
       return [];
     }
+  }
+
+  /// Parse source-tagged product ID (e.g., "openFoodFacts:12345" -> {source: "openFoodFacts", id: "12345"})
+  static Map<String, String?> _parseSourceTaggedId(String raw) {
+    final separatorIndex = raw.indexOf(':');
+    if (separatorIndex <= 0) {
+      return {'source': null, 'id': raw};
+    }
+
+    final prefix = raw.substring(0, separatorIndex).toLowerCase();
+    final id = raw.substring(separatorIndex + 1);
+
+    if (prefix == 'openfoodfacts' || prefix == 'openfoodfact') {
+      return {'source': 'openFoodFacts', 'id': id};
+    }
+    if (prefix == 'mongodb' || prefix == 'ethico') {
+      return {'source': 'mongodb', 'id': id};
+    }
+
+    // Not a recognized source tag, treat entire string as ID
+    return {'source': null, 'id': raw};
   }
 }

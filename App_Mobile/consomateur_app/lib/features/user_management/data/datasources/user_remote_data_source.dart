@@ -117,10 +117,14 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
 
   @override
   Future<void> addToFavorites(String userId, String productId) async {
+    final parsed = _parseSourceTaggedProductId(productId);
     final response = await http.post(
       _uri('/users/$userId/favorites'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'productId': productId}),
+      body: jsonEncode({
+        'productId': parsed['id'],
+        if (parsed['sourceTag'] != null) 'sourceTag': parsed['sourceTag'],
+      }),
     );
     if (response.statusCode != 204) {
       throw _apiException(response, 'Failed to add favorite');
@@ -129,6 +133,7 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
 
   @override
   Future<void> removeFromFavorites(String userId, String productId) async {
+    // Send the full source-tagged productId in the URL path
     final response = await http.delete(_uri('/users/$userId/favorites/$productId'));
     if (response.statusCode != 204) {
       throw _apiException(response, 'Failed to remove favorite');
@@ -137,16 +142,36 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
 
   @override
   Future<void> recordScan(String userId, String productId, bool wasAlternativeChosen) async {
+    final parsed = _parseSourceTaggedProductId(productId);
     final response = await http.post(
       _uri('/users/$userId/scans'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
-        'productId': productId,
+        'productId': parsed['id'],
+        if (parsed['sourceTag'] != null) 'sourceTag': parsed['sourceTag'],
         'wasAlternativeChosen': wasAlternativeChosen,
       }),
     );
     if (response.statusCode != 204) {
       throw _apiException(response, 'Failed to record scan');
     }
+  }
+
+  /// Parse source-tagged product ID (e.g., "openFoodFacts:12345" -> {id: "12345", sourceTag: "openFoodFacts"})
+  static Map<String, String?> _parseSourceTaggedProductId(String raw) {
+    final separatorIndex = raw.indexOf(':');
+    if (separatorIndex <= 0) {
+      return {'id': raw, 'sourceTag': null};
+    }
+
+    final prefix = raw.substring(0, separatorIndex).toLowerCase();
+    final id = raw.substring(separatorIndex + 1);
+
+    if (prefix == 'openfoodfacts' || prefix == 'openfoodfact' || prefix == 'mongodb' || prefix == 'ethico') {
+      return {'id': id, 'sourceTag': prefix};
+    }
+
+    // Not a recognized source tag, treat entire string as ID
+    return {'id': raw, 'sourceTag': null};
   }
 }
