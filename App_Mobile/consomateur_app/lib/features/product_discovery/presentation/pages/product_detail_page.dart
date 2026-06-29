@@ -238,7 +238,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               Builder(
                 builder: (context) {
                   final authProvider = context.watch<AuthProvider>();
-                  final isFavorite = authProvider.currentUser?.favorites.contains(widget.product.id) ?? false;
+                  final isFavorite = authProvider.currentUser?.favorites.contains(widget.product.sourceAwareId) ?? false;
                   final messenger = ScaffoldMessenger.of(context);
 
                   return IconButton(
@@ -258,13 +258,13 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
                       try {
                         if (isFavorite) {
-                          await authProvider.removeFromFavorites(widget.product.id);
+                          await authProvider.removeFromFavorites(widget.product.sourceAwareId);
                           if (!mounted) return;
                           messenger.showSnackBar(
                             const SnackBar(content: Text('Removed from wishlist')),
                           );
                         } else {
-                          await authProvider.addToFavorites(widget.product.id);
+                          await authProvider.addToFavorites(widget.product.sourceAwareId);
                           if (!mounted) return;
                           messenger.showSnackBar(
                             const SnackBar(content: Text('Added to wishlist')),
@@ -596,7 +596,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 ),
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );
@@ -747,7 +747,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 ),
               ],
             );
-          }).toList(),
+          }),
         ],
       ),
     );
@@ -876,36 +876,32 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             ),
           ),
           const SizedBox(height: 12),
-          // Sample Comment Item 1
-          _buildCommentItem(
-            userName: 'Sarah Ahmed',
-            userImage: '👤',
-            timeAgo: '2 hours ago',
-            comment:
-                'Great product! Really good quality. I verified the ethical score and it matches the information provided.',
-            likes: 5,
-          ),
-          const SizedBox(height: 12),
-          // Sample Comment Item 2
-          _buildCommentItem(
-            userName: 'Mohamed Hassan',
-            userImage: '👤',
-            timeAgo: '5 hours ago',
-            comment:
-                'Fair trade certified as mentioned. Would recommend to others looking for ethical products.',
-            likes: 3,
-          ),
-          const SizedBox(height: 12),
-          // Sample Comment Item 3
-          _buildCommentItem(
-            userName: 'Amina Bella',
-            userImage: '👤',
-            timeAgo: '1 day ago',
-            comment:
-                'Just purchased this. The carbon footprint info is very accurate based on my research.',
-            likes: 8,
-          ),
-          const SizedBox(height: 14),
+          if (widget.product.comments.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12.0),
+              child: Text(
+                'No community comments are available for this product yet.',
+                style: GoogleFonts.lato(
+                  fontSize: 13,
+                  color: Colors.grey[600],
+                ),
+              ),
+            )
+          else
+            ...widget.product.comments.map((comment) {
+              return Column(
+                children: [
+                  _buildCommentItem(
+                    userName: comment.username,
+                    userImage: '👤',
+                    timeAgo: comment.timestamp,
+                    comment: comment.text,
+                    likes: comment.rating,
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              );
+            }),
           // Load More Comments Button
           SizedBox(
             width: double.infinity,

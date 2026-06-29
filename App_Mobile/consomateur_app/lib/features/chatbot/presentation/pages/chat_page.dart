@@ -1,5 +1,9 @@
+import 'dart:convert';
+
+import 'package:consomateur_app/core/config/environment.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -45,8 +49,27 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<String> _sendToModel(String message) async {
-    // TODO: Replace this stub with your chatbot model integration.
-    return 'Je suis prêt à répondre une fois votre modèle connecté. Vous avez tapé : "$message"';
+    final uri = Uri.parse('${Environment.aiBotBaseUrl}/chat');
+
+    try {
+      final response = await http
+          .post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'message': message}),
+      )
+          .timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic> && decoded['reply'] != null) {
+          return decoded['reply'].toString();
+        }
+      }
+      return 'Le service IA n’a pas répondu correctement.';
+    } catch (_) {
+      return 'Désolé, je n’ai pas pu joindre l’assistant IA. Vérifiez que le backend est lancé ou réessayez plus tard.';
+    }
   }
 
   void _scrollToBottom() {

@@ -18,6 +18,8 @@ class ProductModel extends Product {
     required super.rating,
     super.blockchainRootHash,
     super.processes,
+    super.comments,
+    super.source,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
@@ -51,6 +53,11 @@ class ProductModel extends Product {
       labels: labels,
       stock: (json['stock'] as num?)?.toInt() ?? 0,
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
+      comments: (json['comments'] as List<dynamic>?)
+              ?.map((item) => ProductCommentModel.fromJson(item as Map<String, dynamic>))
+              .toList() ??
+          [],
+      source: _parseSource(json),
     );
   }
 
@@ -74,6 +81,9 @@ class ProductModel extends Product {
       'labels': labels,
       'stock': stock,
       'rating': rating,
+      'comments': comments
+          .map((comment) => (comment as ProductCommentModel).toJson())
+          .toList(),
     };
   }
 
@@ -86,6 +96,18 @@ class ProductModel extends Product {
       return rawId.toString();
     }
     return rawId.toString();
+  }
+
+  static ProductSource _parseSource(Map<String, dynamic> json) {
+    final source = json['source']?.toString().toLowerCase() ?? '';
+    if (source.contains('openfoodfact')) {
+      return ProductSource.openFoodFacts;
+    }
+    if (source.contains('ethico') || source.contains('mongodb')) {
+      return ProductSource.mongodb;
+    }
+    // Default to mongodb for backward compatibility
+    return ProductSource.mongodb;
   }
 }
 
@@ -140,6 +162,39 @@ class ProductProcessModel extends ProductProcess {
       'step_number': stepNumber,
       'process': process,
       'previous_hash': previousHash,
+    };
+  }
+}
+
+class ProductCommentModel extends ProductComment {
+  const ProductCommentModel({
+    required super.commentId,
+    required super.userId,
+    required super.username,
+    required super.rating,
+    required super.text,
+    required super.timestamp,
+  });
+
+  factory ProductCommentModel.fromJson(Map<String, dynamic> json) {
+    return ProductCommentModel(
+      commentId: json['comment_id']?.toString() ?? '',
+      userId: (json['user_id'] as num?)?.toInt() ?? 0,
+      username: json['username']?.toString() ?? '',
+      rating: (json['rating'] as num?)?.toInt() ?? 0,
+      text: json['text']?.toString() ?? '',
+      timestamp: json['timestamp']?.toString() ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'comment_id': commentId,
+      'user_id': userId,
+      'username': username,
+      'rating': rating,
+      'text': text,
+      'timestamp': timestamp,
     };
   }
 }
