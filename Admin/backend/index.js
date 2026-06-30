@@ -1,137 +1,219 @@
+// ==================== IMPORTS ET CONFIGURATION ====================
+// Ce fichier est le cœur du backend administrateur.
+// Il sert à créer un serveur Express, se connecter à MongoDB, gérer l'authentification
+// des administrateurs et exposer des routes API pour gérer les utilisateurs, produits,
+// fournisseurs, signalements et statistiques.
+
+// 1. On importe le module path pour manipuler les chemins de fichiers.
 const path = require('path');
+// 2. On charge les variables d'environnement depuis le fichier .env du dossier backend.
 require('dotenv').config({ path: path.join(__dirname, '.env') });
+// 3. On importe Express pour créer le serveur web.
 const express = require('express');
+// 4. On importe Mongoose pour communiquer avec MongoDB.
 const mongoose = require('mongoose');
+// 5. On importe CORS pour autoriser les appels depuis le frontend.
 const cors = require('cors');
+// 6. On importe bcrypt pour hacher les mots de passe.
 const bcrypt = require('bcryptjs');
+// 7. On importe jsonwebtoken pour créer et vérifier les tokens JWT.
 const jwt = require('jsonwebtoken');
+// 8. On importe nodemailer pour envoyer les emails de réinitialisation.
 const nodemailer = require('nodemailer');
+// 9. On importe crypto pour générer des tokens sécurisés.
 const crypto = require('crypto');
 
+// 10. On crée l’application Express qui va recevoir les requêtes.
 const app = express();
+// 11. On active CORS pour permettre au frontend d’envoyer des requêtes.
 app.use(cors());
+// 12. On dit à Express de lire automatiquement les requêtes au format JSON.
 app.use(express.json());
 
+// 13. On se connecte à MongoDB avec l’URI contenue dans la variable d’environnement.
 mongoose.connect(process.env.MONGO_URI, { family: 4 })
+  // 14. Si la connexion réussit, on affiche un message de confirmation.
   .then(() => console.log('✅ MongoDB PFA connecté'))
+  // 15. Si la connexion échoue, on affiche l’erreur dans la console.
   .catch(err => console.error('❌ Erreur MongoDB:', err));
 
-// ==================== SCHEMA ADMIN ====================
-
+// ==================== SCHÉMA ADMIN ====================
+// 16. On définit la structure des documents Administrateur dans la base.
 const AdminSchema = new mongoose.Schema({
-  email:            { type: String, required: true, unique: true, lowercase: true },
-  password:         { type: String, required: true },
-  prenom:           { type: String, default: '' },
-  nom:              { type: String, default: '' },
-  telephone:        { type: String, default: '' },
-  departement:      { type: String, default: 'Direction Technique' },
-  role:             { type: String, default: 'Super Administrateur' },
-  lastLogin:        { type: Date },
-  resetToken:       { type: String },
+  // 17. Chaque admin a un email obligatoire, unique et en minuscule.
+  email: { type: String, required: true, unique: true, lowercase: true },
+  // 18. Le mot de passe est obligatoire et sera haché.
+  password: { type: String, required: true },
+  // 19. Le prénom est facultatif avec une valeur vide par défaut.
+  prenom: { type: String, default: '' },
+  // 20. Le nom est facultatif avec une valeur vide par défaut.
+  nom: { type: String, default: '' },
+  // 21. Le téléphone est facultatif.
+  telephone: { type: String, default: '' },
+  // 22. Le département a une valeur par défaut.
+  departement: { type: String, default: 'Direction Technique' },
+  // 23. Le rôle a une valeur par défaut.
+  role: { type: String, default: 'Super Administrateur' },
+  // 24. La date de dernière connexion est enregistrée si nécessaire.
+  lastLogin: { type: Date },
+  // 25. Le token de reset peut être stocké temporairement.
+  resetToken: { type: String },
+  // 26. La date d’expiration de ce token est stockée aussi.
   resetTokenExpiry: { type: Date },
 }, { collection: 'Admins', timestamps: true });
+// 27. On précise que la collection utilisée est Admins.
+// 28. Les timestamps ajoutent createdAt et updatedAt automatiquement.
 
+// 29. On crée le modèle Admin à partir du schéma.
 const Admin = mongoose.model('Admin', AdminSchema);
 
-// ==================== ROUTES AUTH ====================
+// ==================== ROUTES D’AUTHENTIFICATION ====================
+// 30. Ces routes permettent de créer un compte, se connecter et gérer la récupération de mot de passe.
 
-// Créer le premier compte admin (utilisé une seule fois pour l'initialisation)
+// 31. Cette route crée le premier compte admin, souvent utilisée une seule fois.
 app.post('/api/auth/register', async (req, res) => {
   try {
+    // 32. On récupère l’email, le mot de passe et le secret envoyés par le frontend.
     const { email, password, secret } = req.body;
+    // 33. On vérifie si le secret fourni est correct.
     if (secret !== process.env.JWT_SECRET) {
+      // 34. Si le secret est faux, on refuse l’accès.
       return res.status(403).json({ error: 'Accès refusé' });
     }
+    // 35. On cherche si un admin avec cet email existe déjà.
     const existing = await Admin.findOne({ email });
+    // 36. Si un admin existe déjà, on refuse la création.
     if (existing) return res.status(400).json({ error: 'Admin déjà existant' });
+    // 37. On hache le mot de passe avant de l’enregistrer.
     const hashed = await bcrypt.hash(password, 10);
+    // 38. On crée un nouvel admin avec le mot de passe haché.
     const admin = new Admin({ email, password: hashed });
+    // 39. On sauvegarde l’admin dans MongoDB.
     await admin.save();
+    // 40. On répond au frontend avec un message de succès.
     res.json({ message: 'Compte admin créé avec succès' });
   } catch (err) {
+    // 41. Si une erreur survient, on l’envoie au frontend.
     res.status(500).json({ error: err.message });
   }
 });
 
-// Connexion
+// 42. Cette route connecte un admin avec son email et son mot de passe.
 app.post('/api/auth/login', async (req, res) => {
   try {
+    // 43. On récupère l’email et le mot de passe du corps de la requête.
     const { email, password } = req.body;
+    // 44. On cherche l’admin correspondant à cet email en minuscule.
     const admin = await Admin.findOne({ email: email.toLowerCase() });
+    // 45. Si l’admin n’existe pas, on refuse la connexion.
     if (!admin) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+    // 46. On compare le mot de passe envoyé avec celui stocké.
     const valid = await bcrypt.compare(password, admin.password);
+    // 47. Si la comparaison échoue, on refuse la connexion.
     if (!valid) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
 
-    // Sauvegarder la date de dernière connexion
+    // 48. On met à jour la date de dernière connexion.
     admin.lastLogin = new Date();
+    // 49. On sauvegarde cette modification.
     await admin.save();
 
+    // 50. On crée un token JWT valable 8 heures.
     const token = jwt.sign(
       { id: admin._id, email: admin.email },
       process.env.JWT_SECRET,
       { expiresIn: '8h' }
     );
+    // 51. On renvoie le token et l’email de l’admin.
     res.json({ token, email: admin.email });
   } catch (err) {
+    // 52. En cas d’erreur, on envoie un message d’erreur.
     res.status(500).json({ error: err.message });
   }
 });
 
-// Récupérer le profil admin (route protégée par JWT)
+// 53. Cette route récupère le profil de l’admin connecté avec un token JWT.
 app.get('/api/auth/profile', async (req, res) => {
   try {
+    // 54. On récupère l’en-tête Authorization de la requête.
     const authHeader = req.headers.authorization;
+    // 55. Si le token manque, on refuse l’accès.
     if (!authHeader) return res.status(401).json({ error: 'Token manquant' });
+    // 56. On extrait le token depuis l’en-tête.
     const token = authHeader.split(' ')[1];
+    // 57. On vérifie la validité du token à l’aide du secret.
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // 58. On cherche l’admin correspondant à l’identifiant contenu dans le token.
     const admin = await Admin.findById(decoded.id).select('-password -resetToken -resetTokenExpiry');
+    // 59. Si aucun admin n’est trouvé, on envoie une erreur 404.
     if (!admin) return res.status(404).json({ error: 'Admin non trouvé' });
+    // 60. On renvoie le profil sans les données sensibles.
     res.json(admin);
   } catch (err) {
+    // 61. Si le token est invalide, on renvoie une erreur 401.
     res.status(401).json({ error: 'Token invalide' });
   }
 });
 
-// Modifier le profil admin
+// 62. Cette route permet de modifier les informations du profil de l’admin.
 app.put('/api/auth/profile', async (req, res) => {
   try {
+    // 63. On récupère l’en-tête Authorization.
     const authHeader = req.headers.authorization;
+    // 64. Si l’en-tête manque, on refuse l’opération.
     if (!authHeader) return res.status(401).json({ error: 'Token manquant' });
+    // 65. On récupère le token JWT.
     const token = authHeader.split(' ')[1];
+    // 66. On vérifie la validité du token.
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // 67. On récupère les nouvelles valeurs du profil du corps de la requête.
     const { prenom, nom, telephone, departement } = req.body;
+    // 68. On met à jour l’admin dans MongoDB.
     const admin = await Admin.findByIdAndUpdate(
       decoded.id,
       { $set: { prenom, nom, telephone, departement } },
       { new: true }
     ).select('-password -resetToken -resetTokenExpiry');
+    // 69. On envoie le profil mis à jour au frontend.
     res.json(admin);
   } catch (err) {
+    // 70. Si le token est invalide, on renvoie une erreur.
     res.status(401).json({ error: 'Token invalide' });
   }
 });
 
-// Mot de passe oublié → envoie un email de réinitialisation
+// 71. Cette route envoie un email de réinitialisation du mot de passe.
 app.post('/api/auth/forgot-password', async (req, res) => {
   try {
+    // 72. On récupère l’email envoyé par le frontend.
     const { email } = req.body;
+    // 73. On cherche l’admin correspondant à cet email.
     const admin = await Admin.findOne({ email: email.toLowerCase() });
+    // 74. Si aucun compte n’existe, on renvoie une erreur 404.
     if (!admin) return res.status(404).json({ error: 'Aucun compte trouvé avec cet email' });
 
+    // 75. On génère un token aléatoire sécurisé.
     const token = crypto.randomBytes(32).toString('hex');
+    // 76. On enregistre ce token dans le document de l’admin.
     admin.resetToken = token;
-    admin.resetTokenExpiry = new Date(Date.now() + 3600000); // expire dans 1h
+    // 77. On définit une date d’expiration dans 1 heure.
+    admin.resetTokenExpiry = new Date(Date.now() + 3600000);
+    // 78. On sauvegarde la modification dans la base.
     await admin.save();
 
+    // 79. On crée un transporteur pour envoyer l’email.
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
+        // 80. L’adresse Gmail de l’expéditeur vient de la variable d’environnement.
         user: process.env.GMAIL_USER,
+        // 81. Le mot de passe d’application Gmail vient aussi de la variable d’environnement.
         pass: process.env.GMAIL_APP_PASSWORD,
       },
     });
 
+    // 82. On construit le lien de réinitialisation.
     const resetLink = `http://localhost:5173/?reset=${token}`;
+    // 83. On envoie l’email avec le lien de réinitialisation.
     await transporter.sendMail({
       from: `"EthicChain Admin" <${process.env.GMAIL_USER}>`,
       to: email,
@@ -151,43 +233,59 @@ app.post('/api/auth/forgot-password', async (req, res) => {
       `,
     });
 
+    // 84. On confirme au frontend que l’email a bien été envoyé.
     res.json({ message: 'Email de réinitialisation envoyé' });
   } catch (err) {
+    // 85. Si une erreur survient, on envoie un message d’erreur.
     res.status(500).json({ error: err.message });
   }
 });
 
-// Réinitialiser le mot de passe avec le token reçu par email
+// 86. Cette route permet de changer le mot de passe après validation du token.
 app.post('/api/auth/reset-password', async (req, res) => {
   try {
+    // 87. On récupère le token et le nouveau mot de passe.
     const { token, password } = req.body;
+    // 88. On cherche un admin avec ce token encore valide.
     const admin = await Admin.findOne({
       resetToken: token,
       resetTokenExpiry: { $gt: new Date() },
     });
+    // 89. Si aucun token valide n’existe, on refuse la réinitialisation.
     if (!admin) return res.status(400).json({ error: 'Lien invalide ou expiré' });
+    // 90. On hache le nouveau mot de passe.
     admin.password = await bcrypt.hash(password, 10);
+    // 91. On supprime le token après utilisation.
     admin.resetToken = undefined;
+    // 92. On supprime aussi la date d’expiration.
     admin.resetTokenExpiry = undefined;
+    // 93. On sauvegarde la mise à jour dans la base.
     await admin.save();
+    // 94. On confirme la réussite au frontend.
     res.json({ message: 'Mot de passe mis à jour avec succès' });
   } catch (err) {
+    // 95. Si une erreur survient, on envoie un message d’erreur.
     res.status(500).json({ error: err.message });
   }
 });
 
-// Schema flexible pour s'adapter à la structure existante de la collection Users
+// ==================== SCHÉMAS FLEXIBLES POUR LES AUTRES COLLECTIONS ====================
+// Ces schémas sont flexibles, ce qui signifie qu'ils acceptent des champs variables sans erreur.
+// Cela est utile parce que les collections MongoDB peuvent avoir des structures différentes selon les données.
+
 const UserSchema = new mongoose.Schema({}, { strict: false, collection: 'Users' });
+// Schéma pour la collection Users, avec des champs dynamiques acceptés.
 const User = mongoose.model('User', UserSchema);
 
-// Schema flexible pour la collection Products
 const ProductSchema = new mongoose.Schema({}, { strict: false, collection: 'Products' });
+// Schéma pour la collection Products.
 const Product = mongoose.model('Product', ProductSchema);
 
-// Schema flexible pour la collection Producers
 const ProducerSchema = new mongoose.Schema({}, { strict: false, collection: 'Producers' });
+// Schéma pour la collection Producers.
 const Producer = mongoose.model('Producer', ProducerSchema);
 
+// Fonction utilitaire pour normaliser les données utilisateur avant de les envoyer au frontend.
 function normalizeUser(doc) {
   const obj = doc.toObject ? doc.toObject() : doc;
   const prenom = obj.prenom || '';
@@ -224,7 +322,7 @@ function normalizeUser(doc) {
   };
 }
 
-// GET tous les utilisateurs
+// Route GET pour récupérer tous les utilisateurs depuis la base de données.
 app.get('/api/users', async (req, res) => {
   try {
     const users = await User.find();
@@ -234,7 +332,7 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-// PATCH statut (bloquer / débloquer)
+// Route PATCH pour changer le statut d'un utilisateur (actif, bloqué, etc.).
 app.patch('/api/users/:id/statut', async (req, res) => {
   try {
     const { statut } = req.body;
@@ -250,7 +348,7 @@ app.patch('/api/users/:id/statut', async (req, res) => {
   }
 });
 
-// PUT modifier un utilisateur
+// Route PUT pour modifier les informations d'un utilisateur.
 app.put('/api/users/:id', async (req, res) => {
   try {
     const { nom, email, statut, inscription } = req.body;
@@ -274,7 +372,7 @@ app.put('/api/users/:id', async (req, res) => {
   }
 });
 
-// DELETE supprimer un utilisateur
+// Route DELETE pour supprimer un utilisateur de la base.
 app.delete('/api/users/:id', async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id);
@@ -285,9 +383,11 @@ app.delete('/api/users/:id', async (req, res) => {
   }
 });
 
-// ==================== ROUTES REPORTS (SIGNALEMENTS) ====================
+// ==================== ROUTES DES SIGNALEMENTS ====================
+// Ces routes permettent d'afficher, modifier et supprimer les signalements envoyés par les utilisateurs.
 
 const ReportSchema = new mongoose.Schema({}, { strict: false, collection: 'reports' });
+// Schéma flexible pour la collection reports.
 const Report = mongoose.model('Report', ReportSchema);
 
 function normalizeReport(doc) {
@@ -308,6 +408,7 @@ function normalizeReport(doc) {
   };
 }
 
+// Route GET pour récupérer la liste des signalements triés par date de création.
 app.get('/api/reports', async (req, res) => {
   try {
     const reports = await Report.find().sort({ created_at: -1 });
@@ -317,6 +418,7 @@ app.get('/api/reports', async (req, res) => {
   }
 });
 
+// Route PATCH pour mettre à jour le statut d'un signalement et ajouter des notes de modération.
 app.patch('/api/reports/:id', async (req, res) => {
   try {
     const { status, moderator_notes } = req.body;
@@ -341,6 +443,7 @@ app.patch('/api/reports/:id', async (req, res) => {
   }
 });
 
+// Route DELETE pour supprimer un signalement.
 app.delete('/api/reports/:id', async (req, res) => {
   try {
     const report = await Report.findByIdAndDelete(req.params.id);
@@ -351,7 +454,8 @@ app.delete('/api/reports/:id', async (req, res) => {
   }
 });
 
-// ==================== ROUTES STATISTIQUES ====================
+// ==================== ROUTE DES STATISTIQUES ====================
+// Cette route prépare des données agrégées pour l'interface d'administration.
 
 app.get('/api/statistics', async (req, res) => {
   try {
@@ -423,7 +527,8 @@ app.get('/api/statistics', async (req, res) => {
   }
 });
 
-// ==================== ROUTES PRODUCERS (FOURNISSEURS) ====================
+// ==================== ROUTES DES FOURNISSEURS ====================
+// Ces routes permettent de gérer les fournisseurs enregistrés dans la base.
 
 app.get('/api/producers', async (req, res) => {
   try {
@@ -434,6 +539,7 @@ app.get('/api/producers', async (req, res) => {
   }
 });
 
+// Route GET pour récupérer un fournisseur spécifique par son identifiant.
 app.get('/api/producers/:id', async (req, res) => {
   try {
     const producer = await Producer.findById(req.params.id);
@@ -444,6 +550,7 @@ app.get('/api/producers/:id', async (req, res) => {
   }
 });
 
+// Route POST pour créer un nouveau fournisseur.
 app.post('/api/producers', async (req, res) => {
   try {
     const producer = new Producer(req.body);
@@ -454,6 +561,7 @@ app.post('/api/producers', async (req, res) => {
   }
 });
 
+// Route PUT pour modifier un fournisseur existant.
 app.put('/api/producers/:id', async (req, res) => {
   try {
     const producer = await Producer.findByIdAndUpdate(
@@ -468,6 +576,7 @@ app.put('/api/producers/:id', async (req, res) => {
   }
 });
 
+// Route DELETE pour supprimer un fournisseur.
 app.delete('/api/producers/:id', async (req, res) => {
   try {
     const producer = await Producer.findByIdAndDelete(req.params.id);
@@ -478,9 +587,10 @@ app.delete('/api/producers/:id', async (req, res) => {
   }
 });
 
-// ==================== ROUTES PRODUCTS ====================
+// ==================== ROUTES DES PRODUITS ====================
+// Ces routes permettent de gérer les produits dans l'administration.
 
-// GET tous les produits
+// Route GET pour récupérer tous les produits.
 app.get('/api/products', async (req, res) => {
   try {
     const products = await Product.find();
@@ -490,7 +600,7 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
-// GET un produit par ID
+// Route GET pour récupérer un produit précis via son identifiant.
 app.get('/api/products/:id', async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -501,7 +611,7 @@ app.get('/api/products/:id', async (req, res) => {
   }
 });
 
-// POST créer un nouveau produit
+// Route POST pour créer un nouveau produit.
 app.post('/api/products', async (req, res) => {
   try {
     const product = new Product(req.body);
@@ -512,7 +622,7 @@ app.post('/api/products', async (req, res) => {
   }
 });
 
-// PUT modifier un produit (mise à jour complète depuis le front)
+// Route PUT pour mettre à jour complètement un produit depuis l'interface.
 app.put('/api/products/:id', async (req, res) => {
   try {
     const product = await Product.findByIdAndUpdate(
@@ -527,7 +637,7 @@ app.put('/api/products/:id', async (req, res) => {
   }
 });
 
-// DELETE supprimer un produit
+// Route DELETE pour supprimer un produit.
 app.delete('/api/products/:id', async (req, res) => {
   try {
     const product = await Product.findByIdAndDelete(req.params.id);
@@ -538,8 +648,11 @@ app.delete('/api/products/:id', async (req, res) => {
   }
 });
 
+// ==================== DÉMARRAGE DU SERVEUR ====================
+// Le serveur écoute sur un port défini par la variable d'environnement PORT ou par défaut 5000.
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
+  // On affiche quelques URLs utiles pour tester l'API dans la console.
   console.log(`🚀 Serveur démarré sur le port ${PORT}`);
   console.log(`📋 API Users:        http://localhost:${PORT}/api/users`);
   console.log(`📦 API Products:     http://localhost:${PORT}/api/products`);
